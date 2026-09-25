@@ -1,0 +1,2578 @@
+<!DOCTYPE html>
+<html lang="es" class="no-js">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Focus MK2 · El coche de Javier</title>
+<meta name="description" content="Ford Focus MK2 1.6 TDCi de 2007: ficha técnica, cuadro de mandos, telemetría, despiece, galería e historial del coche de Javier.">
+<meta name="theme-color" content="#07080b">
+<meta name="color-scheme" content="dark">
+
+<!--
+╔══════════════════════════════════════════════════════════════════════════╗
+║  FOCUS MK2 — EL COCHE DE JAVIER                                          ║
+║  Archivo único: HTML + CSS + JS. Sin build.                              ║
+║                                                                          ║
+║  PLACEHOLDERS A SUSTITUIR (búscalos con "✎"):                            ║
+║   · Imágenes: [foto-hero.jpg], [galeria-1.jpg] … [galeria-6.jpg]         ║
+║     (colócalas junto a este archivo; si faltan, se muestra un            ║
+║      placeholder técnico con el nombre del archivo)                      ║
+║   · Datos: [CV] [Nm] [caja] [l/100 km] [km] [año de compra]              ║
+║   · Hitos del historial: [lista de hitos]                                ║
+║   · Matrícula decorativa: [texto a elección] (NO la real)                ║
+║                                                                          ║
+║  Librerías (CDN): GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.20,             ║
+║  Three.js r128 (se carga en diferido y solo si hay movimiento).          ║
+╚══════════════════════════════════════════════════════════════════════════╝
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Michroma&display=swap" rel="stylesheet">
+
+<script>
+  /* Marca temprana de entorno para evitar FOUC: se ejecuta antes de pintar */
+  document.documentElement.classList.replace('no-js', 'js');
+</script>
+
+<style>
+/* =========================================================================
+   00 · TOKENS
+   ========================================================================= */
+:root {
+  /* Color */
+  --c-bg: #07080b;
+  --c-bg-2: #0b0d12;
+  --c-bg-3: #10131a;
+  --c-panel: rgba(255, 255, 255, 0.025);
+  --c-line: rgba(170, 190, 255, 0.10);
+  --c-line-strong: rgba(170, 190, 255, 0.26);
+  --c-text: #e9edf5;
+  --c-muted: #9ba4b6;           /* 7.4:1 sobre --c-bg */
+  --c-dim: #5d6576;             /* solo decorativo */
+  --c-ford: #1C3F94;            /* ✎ acento: azul Ford (o color del coche) */
+  --c-ford-bright: #2f5fd0;
+  --c-ford-glow: #7aa2ff;       /* versión clara para texto: AA sobre fondo */
+  --c-chrome-hi: #ffffff;
+  --c-chrome-mid: #aeb6c4;
+  --c-chrome-lo: #5b6372;
+  --c-red: #ff4040;
+  --c-amber: #ffb020;
+  --c-green: #3ddc84;
+  --c-asphalt: #15171c;
+
+  /* Tipografía */
+  --f-display: 'Michroma', 'Eurostile', 'Arial Black', sans-serif;
+  --f-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.86rem;
+  --fs-md: 1rem;
+  --fs-lg: clamp(1.1rem, 0.9rem + 0.8vw, 1.35rem);
+  --fs-h2: clamp(1.9rem, 1rem + 4.2vw, 4.6rem);
+  --fs-hero: clamp(3rem, 7.4vw, 10.5rem);
+
+  /* Espaciado (escala fluida) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: clamp(2rem, 1.4rem + 2vw, 3rem);
+  --sp-7: clamp(3rem, 2rem + 4vw, 6rem);
+  --sp-8: clamp(5rem, 3rem + 8vw, 10rem);
+  --gutter: clamp(1rem, 0.5rem + 3vw, 3rem);
+  --maxw: 1320px;
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --radius: 14px;
+}
+
+/* =========================================================================
+   01 · RESET + BASE
+   ========================================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--f-body);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+img, svg, canvas { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, p, ol, ul, figure { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+::selection { background: var(--c-ford); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--c-ford-glow);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: fixed; top: var(--sp-3); left: var(--sp-3); z-index: 1000;
+  padding: var(--sp-2) var(--sp-4); background: var(--c-text); color: var(--c-bg);
+  font-weight: 600; border-radius: 6px; transform: translateY(-200%);
+}
+.skip-link:focus { transform: none; }
+
+/* Sprite SVG oculto (no display:none: los gradientes deben seguir resolviendo) */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* =========================================================================
+   02 · CAPAS GLOBALES: grano, viñeteado, progreso
+   ========================================================================= */
+.grain {
+  position: fixed; inset: -50%; z-index: 90; pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.9s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-4%, 3%, 0); }
+  40% { transform: translate3d(3%, -5%, 0); }
+  60% { transform: translate3d(-6%, -2%, 0); }
+  80% { transform: translate3d(5%, 4%, 0); }
+  100% { transform: translate3d(-2%, 6%, 0); }
+}
+.vignette {
+  position: fixed; inset: 0; z-index: 89; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.65) 100%);
+}
+.progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 120;
+  background: linear-gradient(90deg, var(--c-ford), var(--c-ford-glow), #fff);
+  transform-origin: 0 50%; transform: scaleX(0);
+}
+
+/* Rejilla de plano técnico reutilizable */
+.blueprint {
+  background-image:
+    linear-gradient(var(--c-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--c-line) 1px, transparent 1px),
+    linear-gradient(rgba(170,190,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(170,190,255,.04) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+}
+
+/* =========================================================================
+   03 · LOADER (llave de contacto + testigos)
+   ========================================================================= */
+.loader { display: none; }
+.js .loader {
+  position: fixed; inset: 0; z-index: 200;
+  display: grid; place-items: center;
+  background: radial-gradient(60% 60% at 50% 50%, #0e1220 0%, var(--c-bg) 70%);
+  clip-path: inset(0 0 0 0);
+}
+.loader__inner { display: grid; justify-items: center; gap: var(--sp-6); padding: var(--gutter); }
+.ignition { width: min(46vw, 220px); height: auto; overflow: visible; }
+.ignition .bezel { fill: url(#g-chrome-ring); }
+.ignition .barrel { fill: #0b0d12; stroke: rgba(255,255,255,.08); }
+.ignition .mark { fill: var(--c-muted); font: 11px var(--f-mono); text-anchor: middle; dominant-baseline: middle; }
+.ignition .mark.is-on { fill: #fff; }
+.key { transform-box: view-box; transform-origin: 100px 100px; }
+.key__head { fill: url(#g-key); stroke: rgba(255,255,255,.18); }
+.key__oval { fill: var(--c-ford); stroke: #c9d4ff; stroke-width: 1; }
+.key__blade { fill: url(#g-blade); }
+
+.tells { display: flex; gap: clamp(0.6rem, 2vw, 1.2rem); }
+.tell { width: clamp(22px, 5vw, 30px); height: clamp(22px, 5vw, 30px); color: #262a33; transition: color .15s, filter .15s; }
+.tell svg { width: 100%; height: 100%; }
+.tell.is-on[data-c="red"] { color: var(--c-red); filter: drop-shadow(0 0 6px var(--c-red)); }
+.tell.is-on[data-c="amber"] { color: var(--c-amber); filter: drop-shadow(0 0 6px var(--c-amber)); }
+.tell.is-on[data-c="green"] { color: var(--c-green); filter: drop-shadow(0 0 6px var(--c-green)); }
+
+.loader__meta {
+  display: flex; gap: var(--sp-5); align-items: baseline;
+  font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .25em; color: var(--c-muted);
+}
+.loader__pct { color: var(--c-text); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.loader__skip {
+  position: absolute; bottom: var(--sp-5); right: var(--gutter);
+  font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted);
+  padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-line-strong); border-radius: 99px;
+}
+.loader__skip:hover { color: var(--c-text); }
+
+/* =========================================================================
+   04 · CURSOR PERSONALIZADO (solo puntero fino)
+   ========================================================================= */
+.cursor { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .has-cursor, .has-cursor * { cursor: none !important; }
+  .has-cursor .cursor { display: block; }
+}
+.cursor__dot, .cursor__ring {
+  position: fixed; top: 0; left: 0; z-index: 300; pointer-events: none; border-radius: 50%;
+}
+.cursor__dot {
+  width: 6px; height: 6px; margin: -3px 0 0 -3px; background: #fff; will-change: transform;
+}
+.cursor__ring {
+  width: 40px; height: 40px; margin: -20px 0 0 -20px; will-change: transform;
+  display: grid; place-items: center;
+}
+.cursor__ring-bg {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.55);
+  transition: transform .45s var(--ease-out), background-color .3s, border-color .3s;
+}
+.cursor__label {
+  position: relative; font: 600 9px var(--f-mono); letter-spacing: .18em; color: #fff;
+  opacity: 0; transform: scale(.6); transition: opacity .25s, transform .45s var(--ease-out);
+}
+.cursor.is-hover .cursor__ring-bg { transform: scale(2.1); background: rgba(28, 63, 148, .85); border-color: rgba(122,162,255,.8); }
+.cursor.is-hover .cursor__label { opacity: 1; transform: scale(1); }
+.cursor.is-hover .cursor__dot { opacity: 0; }
+.cursor.is-down .cursor__ring-bg { transform: scale(1.7); }
+.cursor.is-hidden { opacity: 0; }
+
+/* =========================================================================
+   05 · NAVEGACIÓN
+   ========================================================================= */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 110;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--gutter);
+  transition: transform .6s var(--ease-out);
+}
+.nav::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(var(--c-bg) 0%, rgba(7,8,11,.0) 100%);
+}
+.nav.is-hidden { transform: translateY(-110%); }
+.brand { display: flex; align-items: center; gap: var(--sp-3); font: 400 var(--fs-xs) var(--f-display); letter-spacing: .3em; }
+.brand__oval {
+  width: 34px; height: 16px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, #3f6de0, var(--c-ford) 60%, #0b1d4d);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.65), 0 0 18px rgba(47,95,208,.5);
+}
+.nav__links { display: none; gap: var(--sp-5); }
+.nav__links a {
+  position: relative; font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .16em; color: var(--c-muted); padding: var(--sp-2) 0;
+}
+.nav__links a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px; background: var(--c-ford-glow);
+  transform: scaleX(0); transform-origin: right; transition: transform .5s var(--ease-out);
+}
+.nav__links a:hover, .nav__links a[aria-current="true"] { color: var(--c-text); }
+.nav__links a:hover::after, .nav__links a[aria-current="true"]::after { transform: scaleX(1); transform-origin: left; }
+@media (min-width: 1080px) { .nav__links { display: flex; } }
+
+.btn {
+  position: relative; display: inline-flex; align-items: center; gap: var(--sp-3);
+  padding: 0.85em 1.4em; border-radius: 99px;
+  font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .18em; text-transform: uppercase;
+  color: var(--c-text); border: 1px solid var(--c-line-strong);
+  background: rgba(255,255,255,.02);
+  transition: border-color .3s, background-color .3s, color .3s;
+  -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+.btn__label { display: inline-flex; align-items: center; gap: var(--sp-3); pointer-events: none; }
+.btn:hover { border-color: var(--c-ford-glow); background: rgba(28,63,148,.25); }
+.btn--solid { background: var(--c-ford); border-color: rgba(122,162,255,.5); }
+.btn--solid:hover { background: var(--c-ford-bright); }
+.btn[aria-pressed="true"] { background: var(--c-ford); border-color: var(--c-ford-glow); }
+.btn.is-held { background: var(--c-red); border-color: #ff9a9a; color: #fff; }
+
+.eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.eq i { width: 2px; height: 100%; background: currentColor; transform-origin: bottom; transform: scaleY(.25); }
+.btn[aria-pressed="true"] .eq i { animation: eq .9s var(--ease-io) infinite alternate; }
+.btn[aria-pressed="true"] .eq i:nth-child(2) { animation-delay: -.3s; }
+.btn[aria-pressed="true"] .eq i:nth-child(3) { animation-delay: -.6s; }
+@keyframes eq { to { transform: scaleY(1); } }
+
+/* =========================================================================
+   06 · SECCIONES: estructura común
+   ========================================================================= */
+.section { position: relative; padding: var(--sp-8) var(--gutter); }
+.wrap { max-width: var(--maxw); margin: 0 auto; }
+.section__head { display: grid; gap: var(--sp-4); margin-bottom: var(--sp-7); }
+.eyebrow {
+  display: flex; align-items: center; gap: var(--sp-3);
+  font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .28em; text-transform: uppercase; color: var(--c-ford-glow);
+}
+.eyebrow__rule { flex: 0 0 56px; height: 1px; background: currentColor; transform-origin: left; }
+.h2 {
+  font: 400 var(--fs-h2) / 1.02 var(--f-display); letter-spacing: -0.01em; text-transform: uppercase;
+}
+.lede { max-width: 58ch; color: var(--c-muted); font-size: var(--fs-lg); line-height: 1.55; }
+
+/* Split por caracteres */
+.split .word { display: inline-block; white-space: nowrap; }
+.split .char { display: inline-block; will-change: auto; }
+.split-mask .word { overflow: hidden; vertical-align: top; padding-bottom: .06em; margin-bottom: -.06em; }
+
+/* Paneles que se revelan con máscara clip-path */
+.panel {
+  position: relative; border: 1px solid var(--c-line); border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+}
+
+/* Cotas decorativas en esquinas */
+.corners::before, .corners::after {
+  content: ""; position: absolute; width: 14px; height: 14px; pointer-events: none;
+  border: 1px solid var(--c-line-strong);
+}
+.corners::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.corners::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* =========================================================================
+   07 · HERO
+   ========================================================================= */
+.hero {
+  position: relative; min-height: 100svh; padding: calc(var(--sp-7) + 2rem) var(--gutter) var(--sp-6);
+  display: grid; grid-template-rows: 1fr auto; overflow: hidden; isolation: isolate;
+  background: radial-gradient(90% 60% at 50% 100%, rgba(28,63,148,.28), transparent 60%), var(--c-bg);
+}
+.hero__bg { position: absolute; inset: 0; z-index: -1; }
+.hero__bg canvas { width: 100%; height: 100%; }
+.hero__bg::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(7,8,11,.2) 0%, transparent 35%, rgba(7,8,11,.55) 80%, var(--c-bg) 100%);
+}
+.hero__horizon {
+  position: absolute; left: 0; right: 0; top: 46%; height: 1px; z-index: -1;
+  background: linear-gradient(90deg, transparent, rgba(122,162,255,.5), transparent);
+}
+.hero__stage { position: relative; display: grid; align-content: center; justify-items: center; }
+.hero__title {
+  position: relative; z-index: 2;
+  font: 400 var(--fs-hero) / .9 var(--f-display); letter-spacing: -0.02em; text-align: center; text-transform: uppercase;
+  display: flex; flex-wrap: wrap; justify-content: center; column-gap: .28em;
+}
+.hero__title .char {
+  color: transparent;
+  background: linear-gradient(180deg, #fff 0%, #dfe5ee 38%, #6d7686 52%, #cfd6e2 70%, #ffffff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  text-shadow: none;
+}
+.hero__title .outline {
+  position: absolute; inset: 0; z-index: -1; display: flex; flex-wrap: wrap; justify-content: center; column-gap: .28em;
+  color: transparent; -webkit-text-stroke: 1px rgba(170,190,255,.22);
+}
+.hero__beam {
+  position: absolute; z-index: 3; top: -20%; bottom: -20%; left: 0; width: 38%;
+  pointer-events: none; opacity: 0; mix-blend-mode: screen;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(220,232,255,.55), rgba(122,162,255,.18) 45%, transparent 70%);
+}
+.hero__car {
+  position: relative; z-index: 1; width: min(100%, 1040px); margin-top: calc(var(--fs-hero) * -0.12);
+  aspect-ratio: 1000 / 470; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
+}
+.hero__car > .media, .hero__car > .media img, .hero__car > .media .media__ph { width: 100%; height: 100%; }
+.hero__car img { object-fit: contain; }
+.hero__glare {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: overlay;
+  background: linear-gradient(100deg, transparent 35%, rgba(255,255,255,.9) 48%, rgba(122,162,255,.6) 52%, transparent 65%);
+  transform: translateX(-120%);
+}
+.hero__shade { position: absolute; inset: 0; background: var(--c-bg); pointer-events: none; opacity: 0; }
+.hero__foot {
+  position: relative; z-index: 2;
+  display: grid; gap: var(--sp-5); align-items: end;
+  grid-template-columns: 1fr;
+}
+.hero__meta { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted); text-transform: uppercase; }
+.hero__meta b { color: var(--c-text); font-weight: 500; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; }
+.scroll-cue { display: none; align-items: center; gap: var(--sp-3); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .25em; color: var(--c-muted); }
+.scroll-cue__line { width: 1px; height: 42px; background: var(--c-line-strong); position: relative; overflow: hidden; }
+.scroll-cue__line::after {
+  content: ""; position: absolute; inset: 0; background: #fff; transform: translateY(-100%);
+  animation: cue 2.2s var(--ease-io) infinite;
+}
+@keyframes cue { 60%, 100% { transform: translateY(100%); } }
+@media (min-width: 820px) {
+  .hero__foot { grid-template-columns: 1fr auto 1fr; }
+  .hero__actions { justify-content: flex-end; }
+  .scroll-cue { display: flex; }
+}
+@media (max-width: 640px) {
+  .hero__title { font-size: clamp(2.6rem, 15.5vw, 6rem); row-gap: .08em; }
+  .hero__car { margin-top: var(--sp-5); }
+}
+
+/* Coche SVG (fallback de imagen y planos). Propiedades heredables vía <use>. */
+.car-svg { overflow: visible; }
+.car-body { fill: var(--car-fill, none); stroke: var(--car-stroke, currentColor); stroke-width: var(--car-sw, 1.4); stroke-linejoin: round; }
+.car-glass { fill: var(--car-glass, none); stroke: var(--car-stroke, currentColor); stroke-width: var(--car-sw, 1.4); }
+.car-pillar { fill: none; stroke: var(--car-pillar, var(--car-stroke, currentColor)); stroke-width: var(--car-pillar-w, 1.4); }
+.car-line { fill: none; stroke: var(--car-detail, var(--car-stroke, currentColor)); stroke-width: 1.1; stroke-linecap: round; }
+.car-hl { fill: none; stroke: var(--car-highlight, transparent); stroke-width: 2; stroke-linecap: round; }
+.car-light { fill: var(--car-light, none); stroke: var(--car-stroke, currentColor); stroke-width: 1.1; }
+.car-tail { fill: var(--car-tail, none); stroke: var(--car-stroke, currentColor); stroke-width: 1.1; }
+.car-part { fill: var(--car-fill, none); stroke: var(--car-stroke, currentColor); stroke-width: 1.1; }
+.w-tyre { fill: var(--w-tyre, none); stroke: var(--car-stroke, currentColor); stroke-width: var(--car-sw, 1.4); }
+.w-rim { fill: var(--w-rim, none); stroke: var(--car-stroke, currentColor); stroke-width: 1.1; }
+.w-spoke { fill: var(--w-spoke, none); stroke: var(--car-stroke, currentColor); stroke-width: .9; }
+
+.hero-car {
+  --car-fill: url(#g-paint);
+  --car-glass: url(#g-glass);
+  --car-stroke: rgba(210, 222, 255, .22);
+  --car-detail: rgba(0, 0, 0, .55);
+  --car-highlight: rgba(255, 255, 255, .55);
+  --car-pillar: #05070c; --car-pillar-w: 9;
+  --car-light: url(#g-headlight);
+  --car-tail: #7a0d12;
+  --w-tyre: #07080b; --w-rim: url(#g-rim); --w-spoke: #1a1e27;
+  width: 100%; height: 100%;
+}
+
+/* Media con fallback a placeholder técnico */
+.media { position: relative; overflow: hidden; background: var(--c-bg-2); }
+.media img { width: 100%; height: 100%; object-fit: cover; }
+.media__ph {
+  display: none; position: absolute; inset: 0; place-items: center; align-content: center; gap: var(--sp-3);
+  color: rgba(170,190,255,.38); text-align: center;
+}
+.media__ph svg { width: 78%; height: auto; }
+.media__ph code { font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .12em; color: var(--c-muted); }
+.media.is-missing img { display: none; }
+.media.is-missing .media__ph { display: grid; }
+.media--hero { background: transparent; }
+.media--hero .media__ph { color: inherit; }
+.media--hero .media__ph svg { width: 100%; }
+.media--hero .media__ph code { position: absolute; bottom: 2%; right: 2%; opacity: .6; }
+
+/* =========================================================================
+   08 · FICHA TÉCNICA
+   ========================================================================= */
+.specs__grid { position: relative; display: grid; gap: var(--sp-4); grid-template-columns: 1fr 1fr; }
+.specs__stage { grid-column: 1 / -1; position: relative; padding: var(--sp-5) 0 var(--sp-6); }
+.specs__stage .car-svg { width: 100%; height: auto; color: var(--c-line-strong); --car-stroke: rgba(170,190,255,.42); }
+.spec {
+  position: relative; padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--c-line-strong);
+}
+.spec__k { display: flex; justify-content: space-between; font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted); text-transform: uppercase; }
+.spec__n { color: var(--c-ford-glow); }
+.spec__v { display: flex; align-items: baseline; gap: .35em; margin-top: var(--sp-2); font: 400 clamp(1.6rem, 1rem + 2.6vw, 2.8rem) / 1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.spec__u { font: 500 var(--fs-sm) var(--f-mono); color: var(--c-muted); letter-spacing: .1em; }
+.spec__d { margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-muted); }
+.pt { fill: var(--c-bg); stroke: var(--c-ford-glow); stroke-width: 1.5; }
+.pt-num { fill: var(--c-ford-glow); font: 500 13px var(--f-mono); text-anchor: middle; dominant-baseline: central; }
+.pt-pulse { fill: none; stroke: var(--c-ford-glow); transform-box: fill-box; transform-origin: center; animation: pulse 2.4s var(--ease-out) infinite; }
+@keyframes pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+.dim-line { stroke: var(--c-muted); stroke-width: 1; fill: none; }
+.dim-text { fill: var(--c-muted); font: 500 13px var(--f-mono); letter-spacing: .12em; text-anchor: middle; }
+.cotas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; display: none; }
+.cota { fill: none; stroke: var(--c-ford-glow); stroke-width: 1; }
+.cota-end { fill: var(--c-ford-glow); }
+@media (min-width: 960px) {
+  .specs__grid { grid-template-columns: minmax(200px, 1fr) minmax(0, 2.3fr) minmax(200px, 1fr); grid-template-rows: repeat(3, auto); column-gap: var(--sp-6); row-gap: var(--sp-5); align-items: center; }
+  .specs__stage { grid-column: 2; grid-row: 1 / span 3; padding: 0; }
+  .spec[data-side="l"] { grid-column: 1; text-align: left; }
+  .spec[data-side="r"] { grid-column: 3; }
+  .spec[data-row="1"] { grid-row: 1; } .spec[data-row="2"] { grid-row: 2; } .spec[data-row="3"] { grid-row: 3; }
+  .cotas { display: block; }
+  .pt-num { display: none; }
+}
+
+/* =========================================================================
+   09 · CUADRO DE MANDOS
+   ========================================================================= */
+.cluster {
+  display: grid; gap: var(--sp-5); padding: var(--sp-6) var(--sp-5);
+  grid-template-columns: 1fr 1fr; align-items: center;
+  background:
+    radial-gradient(70% 90% at 50% 0%, rgba(28,63,148,.22), transparent 70%),
+    linear-gradient(180deg, #0d1017, #07080b);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 40px 120px -40px rgba(28,63,148,.45);
+}
+.gauge { position: relative; width: 100%; max-width: 420px; justify-self: center; }
+.gauge svg { width: 100%; height: auto; overflow: visible; }
+.g-ring { fill: none; stroke: url(#g-chrome-ring); stroke-width: 5; }
+.g-face { fill: url(#g-face); }
+.g-tick { stroke: #cfd8ea; stroke-width: 1; }
+.g-tick--major { stroke-width: 2.2; stroke: #fff; }
+.g-num { fill: #dfe6f3; font: 500 11px var(--f-mono); text-anchor: middle; dominant-baseline: central; }
+.g-red { fill: none; stroke: var(--c-red); stroke-width: 5; }
+.g-unit { fill: var(--c-muted); font: 500 7px var(--f-mono); letter-spacing: .2em; text-anchor: middle; }
+.g-read { fill: #fff; font: 500 14px var(--f-mono); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.g-needle { fill: #ff3a2a; filter: drop-shadow(0 0 4px rgba(255,58,42,.8)); }
+.g-cap { fill: url(#g-cap); stroke: rgba(255,255,255,.25); }
+.g-glow { fill: url(#g-glow); opacity: .0; }
+.cluster.is-lit .g-glow { opacity: 1; transition: opacity 1s; }
+.lcd {
+  grid-column: 1 / -1; order: 3;
+  display: grid; gap: var(--sp-3); padding: var(--sp-4); border-radius: 10px;
+  background: linear-gradient(180deg, #0b1424, #060a12); border: 1px solid rgba(122,162,255,.18);
+  font: 500 var(--fs-sm) var(--f-mono); color: #bcd0ff; box-shadow: inset 0 0 30px rgba(28,63,148,.3);
+}
+.lcd__row { display: flex; justify-content: space-between; gap: var(--sp-3); font-variant-numeric: tabular-nums; }
+.lcd__gear { font: 400 2.2rem/1 var(--f-display); color: #fff; }
+.lcd__small { font-size: var(--fs-xs); color: #7f93c4; letter-spacing: .14em; }
+.bar { position: relative; height: 6px; border-radius: 3px; background: rgba(122,162,255,.12); overflow: hidden; }
+.bar i { position: absolute; inset: 0; background: linear-gradient(90deg, #4c7cff, #bcd0ff); transform-origin: left; transform: scaleX(0); }
+.cluster__tells { grid-column: 1 / -1; order: 4; display: flex; justify-content: center; gap: var(--sp-4); }
+.cluster__controls { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-3); margin-top: var(--sp-5); }
+.hint { text-align: center; margin-top: var(--sp-3); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .14em; color: var(--c-muted); }
+kbd { font: inherit; padding: .1em .45em; border: 1px solid var(--c-line-strong); border-radius: 4px; color: var(--c-text); }
+@media (min-width: 900px) {
+  .cluster { grid-template-columns: 1fr minmax(200px, 260px) 1fr; padding: var(--sp-6); }
+  .lcd { grid-column: 2; order: 0; }
+  .gauge--speed { order: 1; }
+}
+
+/* =========================================================================
+   10 · TELEMETRÍA
+   ========================================================================= */
+.telemetry__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .18em; color: var(--c-muted); }
+.live { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--c-text); }
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c-red); box-shadow: 0 0 10px var(--c-red); animation: blink 1.2s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+.telemetry__grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+@media (min-width: 700px) { .telemetry__grid { grid-template-columns: 1fr 1fr; } }
+.tcard { padding: var(--sp-5); display: grid; gap: var(--sp-3); overflow: hidden; }
+.tcard__head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-3); }
+.tcard__k { font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted); text-transform: uppercase; }
+.tcard__pid { font: 500 10px var(--f-mono); color: var(--c-dim); letter-spacing: .1em; }
+.tcard__v { font: 400 clamp(1.8rem, 1.2rem + 2vw, 2.6rem)/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.tcard__v small { font: 500 var(--fs-sm) var(--f-mono); color: var(--c-muted); margin-left: .4em; }
+.tcard canvas { width: 100%; height: 110px; }
+.tcard__range { display: flex; justify-content: space-between; font: 500 10px var(--f-mono); color: var(--c-dim); letter-spacing: .1em; }
+
+/* =========================================================================
+   11 · DESPIECE (sección pineada)
+   ========================================================================= */
+.explode { padding: 0; }
+.explode__pin { position: relative; height: 100svh; display: grid; grid-template-rows: auto 1fr auto; padding: calc(var(--sp-6) + 2.5rem) var(--gutter) var(--sp-5); overflow: hidden; }
+.explode__stage { position: relative; width: 100%; height: 100%; min-height: 0; }
+.explode__stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.xp { --car-stroke: rgba(190,208,255,.7); color: rgba(190,208,255,.7); }
+.xp .xp-body { --car-fill: rgba(9, 12, 20, .96); --car-glass: rgba(28,63,148,.18); }
+.xp .xp-wheel { --w-tyre: #090b10; --w-rim: #0e121b; --w-spoke: #121726; }
+.xp-engine rect, .xp-engine path, .xp-engine circle,
+.xp-turbo path, .xp-turbo circle,
+.xp-brake circle, .xp-brake path,
+.xp-susp path, .xp-susp rect { fill: rgba(12,16,26,.92); stroke: var(--c-ford-glow); stroke-width: 1.2; }
+.xp-accent { fill: rgba(28,63,148,.55) !important; }
+.xp-lead { stroke: var(--c-muted); stroke-width: 1; fill: none; stroke-dasharray: 3 4; }
+.xp-labels { position: absolute; inset: 0; pointer-events: none; }
+.xp-label {
+  position: absolute; transform: translate(-50%, -100%);
+  display: grid; gap: 2px; white-space: nowrap;
+  font: 500 clamp(9px, .6rem + .25vw, 12px) var(--f-mono); letter-spacing: .16em; color: var(--c-text); text-transform: uppercase;
+}
+.xp-label small { color: var(--c-muted); letter-spacing: .08em; text-transform: none; font-size: .95em; }
+.xp-label::before { content: ""; width: 20px; height: 1px; background: var(--c-ford-glow); margin-bottom: 4px; }
+.explode__meter { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-4); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted); }
+.explode__meter output { color: var(--c-text); font-variant-numeric: tabular-nums; }
+.explode__track { flex: 1; height: 1px; background: var(--c-line-strong); position: relative; }
+.explode__track i { position: absolute; inset: 0; background: var(--c-ford-glow); transform-origin: left; transform: scaleX(0); }
+@media (max-width: 640px) { .xp-label small { display: none; } }
+
+/* =========================================================================
+   12 · GALERÍA (scroll horizontal)
+   ========================================================================= */
+.gallery { padding: 0; }
+.gallery__pin { position: relative; min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: var(--sp-6); padding: calc(var(--sp-6) + 2.5rem) 0 var(--sp-6); overflow: hidden; }
+.gallery__head { padding: 0 var(--gutter); }
+.gallery__track { display: flex; gap: clamp(1rem, 2vw, 2rem); padding: 0 var(--gutter); width: max-content; touch-action: pan-y; }
+.shot { position: relative; flex: 0 0 auto; perspective: 900px; }
+.shot:nth-child(even) { margin-top: clamp(1rem, 6vh, 4rem); }
+.shot__frame {
+  position: relative; height: min(54svh, 600px, 118vw); aspect-ratio: 4 / 5; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--c-line); transform-style: preserve-3d; will-change: transform;
+}
+.shot:nth-child(3n+2) .shot__frame { aspect-ratio: 16 / 11; }
+.shot__frame .media { position: absolute; inset: 0; }
+.shot__frame img { transform: scale(1.12); }
+.shot__glare {
+  position: absolute; inset: -40%; pointer-events: none; opacity: 0; mix-blend-mode: soft-light;
+  background: radial-gradient(closest-side, rgba(255,255,255,.95), rgba(255,255,255,0) 70%);
+  width: 60%; height: 60%; transition: opacity .4s;
+}
+.shot__streak {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+  transform: translateX(-110%); transition: transform 0s;
+}
+.shot:hover .shot__streak { transform: translateX(110%); transition: transform 1s var(--ease-out); }
+.shot:hover .shot__glare { opacity: .7; }
+.shot figcaption { display: flex; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .16em; color: var(--c-muted); text-transform: uppercase; }
+.shot figcaption b { color: var(--c-text); font-weight: 500; }
+.gallery__foot { padding: 0 var(--gutter); display: flex; align-items: center; gap: var(--sp-4); font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .2em; color: var(--c-muted); }
+/* Versión estática (movimiento reducido / sin GSAP): scroll nativo con snap */
+.gallery.is-static .gallery__viewport { overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: var(--sp-4); }
+.gallery.is-static .shot { scroll-snap-align: center; }
+
+/* =========================================================================
+   13 · HISTORIAL (carretera)
+   ========================================================================= */
+.history__body { position: relative; }
+.road {
+  position: absolute; top: 0; bottom: 0; left: 18px; width: 44px; transform: translateX(-50%);
+  pointer-events: none;
+}
+.road__asphalt {
+  position: absolute; inset: 0; overflow: hidden; border-radius: 4px;
+  background: linear-gradient(90deg, #d9dee8 0 2px, var(--c-asphalt) 2px calc(100% - 2px), #d9dee8 calc(100% - 2px));
+  clip-path: inset(0 0 100% 0);
+}
+.road__marks {
+  position: absolute; left: 50%; top: -120px; bottom: -120px; width: 3px; margin-left: -1.5px;
+  background: repeating-linear-gradient(180deg, #ffd24a 0 26px, transparent 26px 60px);
+  will-change: transform;
+}
+.road__car { position: absolute; left: 50%; top: 0; width: 26px; margin-left: -13px; will-change: transform; }
+.road__car svg { width: 100%; height: auto; overflow: visible; }
+.milestones { display: grid; gap: var(--sp-6); padding-left: 56px; }
+.milestone { position: relative; }
+.milestone::before {
+  content: ""; position: absolute; top: .55em; left: -38px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%;
+  background: var(--c-bg); border: 2px solid var(--c-dim); transition: border-color .4s, box-shadow .4s, background-color .4s;
+}
+.milestone.is-active::before { border-color: var(--c-ford-glow); background: var(--c-ford); box-shadow: 0 0 0 6px rgba(28,63,148,.35), 0 0 22px var(--c-ford-glow); }
+.milestone__card { padding: var(--sp-5); }
+.milestone time { font: 400 var(--fs-lg) var(--f-display); color: var(--c-ford-glow); }
+.milestone h3 { margin-top: var(--sp-2); font: 600 var(--fs-lg)/1.3 var(--f-body); }
+.milestone p { margin-top: var(--sp-2); color: var(--c-muted); font-size: var(--fs-sm); }
+.tag { display: inline-block; margin-top: var(--sp-3); padding: .2em .7em; border-radius: 99px; border: 1px solid var(--c-line-strong); font: 500 10px var(--f-mono); letter-spacing: .18em; color: var(--c-muted); text-transform: uppercase; }
+.tag--mod { color: var(--c-ford-glow); border-color: rgba(122,162,255,.4); }
+@media (min-width: 900px) {
+  .road { left: 50%; }
+  .milestones { padding-left: 0; grid-template-columns: 1fr 1fr; column-gap: 140px; row-gap: var(--sp-4); }
+  .milestone:nth-child(odd) { grid-column: 1; text-align: right; }
+  .milestone:nth-child(even) { grid-column: 2; margin-top: var(--sp-7); }
+  .milestone:nth-child(odd)::before { left: auto; right: -76px; margin: 0; }
+  .milestone:nth-child(even)::before { left: -70px; }
+}
+
+/* =========================================================================
+   14 · CIERRE
+   ========================================================================= */
+.outro { min-height: 100svh; display: grid; align-content: center; justify-items: center; gap: var(--sp-6); text-align: center; overflow: hidden; }
+.outro__title { font: 400 clamp(2.2rem, 0.8rem + 8.5vw, 10rem)/0.95 var(--f-display); text-transform: uppercase; letter-spacing: -.02em; }
+.outro__title .line { display: block; }
+.outro__title .char { color: transparent; background: linear-gradient(180deg, #fff 0%, #cfd6e2 45%, #5c6575 55%, #e8edf5 100%); -webkit-background-clip: text; background-clip: text; }
+.outro__title .line--accent .char { background: linear-gradient(180deg, #d9e5ff 0%, #7aa2ff 45%, #1C3F94 58%, #a9c1ff 100%); -webkit-background-clip: text; background-clip: text; }
+.plate-wrap { perspective: 800px; }
+.plate {
+  display: flex; align-items: stretch; height: clamp(54px, 9vw, 86px); border-radius: 8px; overflow: hidden;
+  background: linear-gradient(180deg, #ffffff, #e6e9ee 60%, #cfd4dc); color: #0b0d12;
+  box-shadow: 0 0 0 2px #0b0d12, 0 0 0 4px #c7ccd6, 0 30px 60px -20px rgba(0,0,0,.8);
+  transform-style: preserve-3d; will-change: transform;
+}
+.plate__eu { display: grid; place-items: center; align-content: end; padding: 6px 8px; background: #1c3fbf; color: #fff; font: 600 clamp(.8rem, 1.6vw, 1.1rem) var(--f-body); }
+.plate__stars { width: clamp(18px, 3vw, 28px); height: auto; margin-bottom: auto; margin-top: 6px; }
+.plate__txt { display: grid; place-items: center; padding: 0 clamp(.8rem, 2.5vw, 1.8rem); font: 400 clamp(1.6rem, 5vw, 3.2rem) var(--f-display); letter-spacing: .12em; white-space: nowrap; }
+.outro__sub { color: var(--c-muted); max-width: 52ch; }
+
+.footer { padding: var(--sp-6) var(--gutter); border-top: 1px solid var(--c-line); display: flex; flex-wrap: wrap; gap: var(--sp-3); justify-content: space-between; font: 500 var(--fs-xs) var(--f-mono); letter-spacing: .12em; color: var(--c-muted); }
+
+/* =========================================================================
+   15 · MOVIMIENTO REDUCIDO
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .grain { animation: none; }
+  .hero__glare, .hero__beam { display: none; }
+  .hero__shade { opacity: 0; }
+}
+</style>
+</head>
+
+<body>
+<a class="skip-link" href="#main">Saltar al contenido</a>
+
+<!-- =====================================================================
+     SPRITE SVG: gradientes, iconos de testigos, coche y rueda reutilizables
+     ===================================================================== -->
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Pintura azul metalizada Ford (✎ cambia los stops si el coche es de otro color) -->
+    <linearGradient id="g-paint" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4d7cf0"/>
+      <stop offset=".28" stop-color="#2a54c0"/>
+      <stop offset=".42" stop-color="#e7eeff"/>
+      <stop offset=".47" stop-color="#1C3F94"/>
+      <stop offset=".8" stop-color="#0d2257"/>
+      <stop offset="1" stop-color="#040a1d"/>
+    </linearGradient>
+    <linearGradient id="g-glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2233"/>
+      <stop offset=".45" stop-color="#05070c"/>
+      <stop offset=".55" stop-color="#2a3550"/>
+      <stop offset="1" stop-color="#05070c"/>
+    </linearGradient>
+    <linearGradient id="g-headlight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".6" stop-color="#bcd0ff"/>
+      <stop offset="1" stop-color="#3a4a70"/>
+    </linearGradient>
+    <radialGradient id="g-rim" cx=".4" cy=".35" r=".8">
+      <stop offset="0" stop-color="#eef2f8"/>
+      <stop offset=".5" stop-color="#8d96a6"/>
+      <stop offset="1" stop-color="#2a2f3a"/>
+    </radialGradient>
+    <linearGradient id="g-chrome-ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".35" stop-color="#8b93a3"/>
+      <stop offset=".55" stop-color="#f3f5f9"/>
+      <stop offset="1" stop-color="#3c4250"/>
+    </linearGradient>
+    <radialGradient id="g-face" cx=".5" cy=".4" r=".6">
+      <stop offset="0" stop-color="#141a28"/>
+      <stop offset="1" stop-color="#05070b"/>
+    </radialGradient>
+    <radialGradient id="g-glow" cx=".5" cy=".5" r=".5">
+      <stop offset=".55" stop-color="rgba(122,162,255,0)"/>
+      <stop offset=".9" stop-color="rgba(122,162,255,.16)"/>
+      <stop offset="1" stop-color="rgba(122,162,255,0)"/>
+    </radialGradient>
+    <radialGradient id="g-cap" cx=".35" cy=".3" r=".8">
+      <stop offset="0" stop-color="#e9edf5"/>
+      <stop offset="1" stop-color="#20242e"/>
+    </radialGradient>
+    <linearGradient id="g-key" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b303b"/>
+      <stop offset="1" stop-color="#0b0d12"/>
+    </linearGradient>
+    <linearGradient id="g-blade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6fa"/>
+      <stop offset=".5" stop-color="#8e97a8"/>
+      <stop offset="1" stop-color="#d9dee8"/>
+    </linearGradient>
+    <radialGradient id="g-hl-glow">
+      <stop offset="0" stop-color="#eef3ff" stop-opacity=".9"/>
+      <stop offset=".35" stop-color="#9fbaff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#6f9bff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g-fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".35"/>
+      <stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="m-reflect" maskContentUnits="userSpaceOnUse">
+      <rect x="0" y="338" width="1000" height="160" fill="url(#g-fade)"/>
+    </mask>
+
+    <!-- Iconos de testigos (24×24, trazo) -->
+    <symbol id="i-battery" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="1.5"/><path d="M7 7V5h3v2M14 7V5h3v2M6 13.5h3.5M14.5 13.5H18M16.25 11.75v3.5"/></g></symbol>
+    <symbol id="i-oil" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M2 10h4.5l2-2h6l5.5-2.5 1 1.6-5.2 7.4H7.5A2.5 2.5 0 0 1 5 12v-2M8.5 8V6h2.5"/><path d="M21.2 15c.7 1.1.9 1.7.9 2.2a.9.9 0 0 1-1.8 0c0-.5.2-1.1.9-2.2z" fill="currentColor"/></g></symbol>
+    <symbol id="i-glow" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 18V8M21 18V8M3 13c1.6-5 3.4-5 4.5 0s2.9 5 4.5 0 2.9-5 4.5 0 2.9 5 4.5 0"/></g></symbol>
+    <symbol id="i-engine" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><path d="M5 9h3l1.5-2h5V9h2l1.5 2H20v6h-2l-1.5 2H9l-2-2H5zM2 11v5M5 13.5H2M10 5h4"/></g></symbol>
+    <symbol id="i-abs" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7.5"/><path d="M3.5 6a10 10 0 0 0 0 12M20.5 6a10 10 0 0 1 0 12" stroke-linecap="round"/></g><text x="12" y="14.3" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="6.4" fill="currentColor">ABS</text></symbol>
+    <symbol id="i-brake" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><path d="M3.5 6a10 10 0 0 0 0 12M20.5 6a10 10 0 0 1 0 12M12 8v5"/></g><circle cx="12" cy="15.8" r="1.1" fill="currentColor"/></symbol>
+
+    <!-- Rueda (centrada en 0,0) -->
+    <g id="wheel">
+      <circle class="w-tyre" r="66"/>
+      <circle class="w-rim" r="46"/>
+      <path class="w-spoke" d="M-5 -12 L-9 -43 L9 -43 L5 -12 Z" />
+      <path class="w-spoke" d="M-5 -12 L-9 -43 L9 -43 L5 -12 Z" transform="rotate(72)"/>
+      <path class="w-spoke" d="M-5 -12 L-9 -43 L9 -43 L5 -12 Z" transform="rotate(144)"/>
+      <path class="w-spoke" d="M-5 -12 L-9 -43 L9 -43 L5 -12 Z" transform="rotate(216)"/>
+      <path class="w-spoke" d="M-5 -12 L-9 -43 L9 -43 L5 -12 Z" transform="rotate(288)"/>
+      <circle class="w-rim" r="11"/>
+    </g>
+
+    <!-- Carrocería Focus MK2 5p, vista lateral (frontal a la izquierda). viewBox base 1000×420, suelo y=370 -->
+    <g id="car-shell">
+      <path class="car-body" d="M48 338 C36 334 30 318 30 300 L32 262 C34 240 50 222 80 214 C150 196 260 170 345 153 C410 118 470 72 540 54 C630 44 770 46 850 56 C884 61 902 70 912 84 L952 160 C962 190 968 240 968 300 C966 322 958 334 945 338 L861 338 A80 80 0 1 0 719 338 L286 338 A80 80 0 1 0 144 338 Z"/>
+      <path class="car-glass" d="M380 160 C432 122 486 88 552 72 C640 62 760 62 836 70 C858 73 872 82 880 96 L906 150 C760 154 560 160 380 160 Z"/>
+      <path class="car-pillar" d="M610 66 L604 158 M792 64 L800 153"/>
+      <path class="car-hl" d="M92 232 C300 204 600 186 948 172"/>
+      <path class="car-line" d="M374 166 C366 220 364 280 370 334 M606 160 C604 220 604 280 608 336 M802 154 C812 196 826 214 846 228 M300 300 C450 294 600 294 700 300 M36 282 L112 276"/>
+      <path class="car-line" d="M520 198 L556 197 M722 190 L754 189"/>
+      <path class="car-part" d="M392 160 C396 146 414 140 430 144 L432 164 C418 168 400 168 392 160 Z"/>
+      <path class="car-light" d="M36 252 C60 234 110 222 180 208 C186 214 186 222 180 228 C120 238 72 252 40 268 Z"/>
+      <path class="car-light" d="M42 306 L82 303 L82 313 L44 316 Z"/>
+      <path class="car-tail" d="M914 92 C930 118 946 148 956 176 C962 196 964 216 963 236 L946 234 C944 204 936 170 920 132 Z"/>
+    </g>
+
+    <!-- Coche completo (carrocería + ruedas) -->
+    <g id="car-full">
+      <use href="#car-shell"/>
+      <use href="#wheel" x="215" y="301"/>
+      <use href="#wheel" x="790" y="301"/>
+    </g>
+  </defs>
+</svg>
+
+<!-- Capas globales -->
+<div class="progress" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- Cursor -->
+<div class="cursor" aria-hidden="true">
+  <div class="cursor__dot"></div>
+  <div class="cursor__ring"><span class="cursor__ring-bg"></span><span class="cursor__label"></span></div>
+</div>
+
+<!-- =====================================================================
+     LOADER
+     ===================================================================== -->
+<div class="loader" id="loader">
+  <div class="loader__inner">
+    <svg class="ignition" viewBox="0 0 200 200" aria-hidden="true">
+      <circle class="bezel" cx="100" cy="100" r="82"/>
+      <circle class="barrel" cx="100" cy="100" r="72"/>
+      <g>
+        <text class="mark" data-pos="0" x="54" y="54">0</text>
+        <text class="mark" data-pos="1" x="100" y="36">I</text>
+        <text class="mark" data-pos="2" x="146" y="54">II</text>
+        <text class="mark" data-pos="3" x="164" y="100">III</text>
+      </g>
+      <g class="key">
+        <rect class="key__blade" x="96" y="98" width="8" height="4" rx="1"/>
+        <path class="key__blade" d="M97 104 H103 V178 L100 184 L97 178 Z"/>
+        <path class="key__head" d="M78 56 Q100 44 122 56 L122 104 Q100 114 78 104 Z" transform="rotate(180 100 100)"/>
+        <ellipse class="key__oval" cx="100" cy="120" rx="12" ry="6"/>
+      </g>
+    </svg>
+    <ul class="tells" aria-hidden="true">
+      <li class="tell" data-c="red"><svg><use href="#i-battery"/></svg></li>
+      <li class="tell" data-c="red"><svg><use href="#i-oil"/></svg></li>
+      <li class="tell" data-c="amber" data-glow><svg><use href="#i-glow"/></svg></li>
+      <li class="tell" data-c="amber"><svg><use href="#i-engine"/></svg></li>
+      <li class="tell" data-c="amber"><svg><use href="#i-abs"/></svg></li>
+      <li class="tell" data-c="red"><svg><use href="#i-brake"/></svg></li>
+    </ul>
+    <p class="loader__meta" role="status"><span class="loader__state">CONTACTO</span><span class="loader__pct">000</span></p>
+  </div>
+  <button class="loader__skip" type="button">SALTAR INTRO</button>
+</div>
+
+<!-- =====================================================================
+     NAV
+     ===================================================================== -->
+<header class="nav" id="nav">
+  <a class="brand" href="#top" data-cursor="INICIO" aria-label="Focus MK2, volver al inicio">
+    <span class="brand__oval" aria-hidden="true"></span><span>FOCUS / MK2</span>
+  </a>
+  <nav aria-label="Secciones">
+    <ul class="nav__links">
+      <li><a href="#ficha" data-cursor="VER">Ficha</a></li>
+      <li><a href="#cuadro" data-cursor="VER">Cuadro</a></li>
+      <li><a href="#telemetria" data-cursor="VER">Telemetría</a></li>
+      <li><a href="#despiece" data-cursor="VER">Despiece</a></li>
+      <li><a href="#galeria" data-cursor="VER">Galería</a></li>
+      <li><a href="#historial" data-cursor="VER">Historial</a></li>
+    </ul>
+  </nav>
+  <button class="btn magnetic" type="button" data-sound aria-pressed="false" data-cursor="SONIDO">
+    <span class="btn__label"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span data-sound-label>Sonido</span></span>
+  </button>
+</header>
+
+<main id="main">
+
+  <!-- ===================================================================
+       01 · HERO
+       =================================================================== -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="hero__bg" aria-hidden="true"></div>
+    <div class="hero__horizon" aria-hidden="true"></div>
+
+    <div class="hero__stage">
+      <h1 class="hero__title" id="hero-title">
+        <span class="sr-only">Ford Focus MK2</span>
+        <span class="split" data-split aria-hidden="true">FOCUS</span>
+        <span class="split" data-split aria-hidden="true">MK2</span>
+        <span class="outline" aria-hidden="true"><span>FOCUS</span><span>MK2</span></span>
+      </h1>
+      <div class="hero__beam" aria-hidden="true"></div>
+
+      <div class="hero__car">
+        <!-- ✎ PLACEHOLDER: [foto-hero.jpg] — foto del coche recortada o sobre fondo oscuro -->
+        <div class="media media--hero" data-media>
+          <img src="foto-hero.jpg" alt="Ford Focus MK2 de Javier, vista lateral en la noche" width="1600" height="752" fetchpriority="high" decoding="async">
+          <div class="media__ph" aria-hidden="true">
+            <svg class="car-svg hero-car" viewBox="0 0 1000 470">
+              <ellipse cx="500" cy="372" rx="470" ry="16" fill="rgba(0,0,0,.8)"/>
+              <use href="#car-full"/>
+              <g mask="url(#m-reflect)" opacity=".5"><use href="#car-full" transform="translate(0 740) scale(1 -1)"/></g>
+              <ellipse class="hero-car__beam" cx="150" cy="232" rx="115" ry="34" fill="url(#g-hl-glow)" opacity="0" style="mix-blend-mode:screen"/>
+            </svg>
+            <code>[foto-hero.jpg]</code>
+          </div>
+        </div>
+        <div class="hero__glare" aria-hidden="true"></div>
+        <div class="hero__shade" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="hero__foot">
+      <p class="hero__meta" data-reveal>
+        <span><b>1.6 TDCi</b> Duratorq</span>
+        <span><b>2007</b></span>
+        <span><b data-ph="[CV]">109</b> CV</span>
+      </p>
+      <div class="scroll-cue" aria-hidden="true"><span class="scroll-cue__line"></span>SCROLL</div>
+      <div class="hero__actions" data-reveal>
+        <button class="btn btn--solid magnetic" type="button" data-sound aria-pressed="false" data-cursor="ARRANCA">
+          <span class="btn__label">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>
+            <span data-sound-label>Arrancar motor</span>
+          </span>
+        </button>
+        <a class="btn magnetic" href="#ficha" data-cursor="VER"><span class="btn__label">Descubrir</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       02 · FICHA TÉCNICA
+       =================================================================== -->
+  <section class="section specs blueprint" id="ficha" aria-labelledby="ficha-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>02 — Ficha técnica</p>
+        <h2 class="h2 split split-mask" id="ficha-title" data-split data-heading>Ingeniería diésel</h2>
+        <p class="lede" data-reveal>Motor Duratorq de cuatro cilindros, inyección common-rail y turbo de geometría variable. Honesto, frugal y con par desde abajo.</p>
+      </header>
+
+      <div class="specs__grid" data-specs>
+        <!-- ✎ PLACEHOLDERS: ajusta data-count con los datos reales -->
+        <article class="spec" data-side="l" data-row="1" data-target="pt-engine">
+          <p class="spec__k"><span>Motor</span><span class="spec__n">01</span></p>
+          <p class="spec__v"><span data-count="1560">1560</span><span class="spec__u">cc</span></p>
+          <p class="spec__d">1.6 TDCi · 16V · common-rail</p>
+        </article>
+        <article class="spec" data-side="l" data-row="2" data-target="pt-turbo">
+          <p class="spec__k"><span>Par</span><span class="spec__n">02</span></p>
+          <!-- ✎ [Nm] -->
+          <p class="spec__v"><span data-count="240" data-ph="[Nm]">240</span><span class="spec__u">Nm</span></p>
+          <p class="spec__d">a 1750 rpm · turbo VGT</p>
+        </article>
+        <article class="spec" data-side="l" data-row="3" data-target="pt-gear">
+          <p class="spec__k"><span>Caja</span><span class="spec__n">03</span></p>
+          <!-- ✎ [manual 5/6 vel.] -->
+          <p class="spec__v"><span data-count="5" data-ph="[caja]">5</span><span class="spec__u">vel. manual</span></p>
+          <p class="spec__d">Tracción delantera</p>
+        </article>
+
+        <figure class="specs__stage">
+          <svg class="car-svg" viewBox="0 -30 1000 470" role="img" aria-label="Plano lateral del Focus con cotas: largo 4,34 m, alto 1,49 m, batalla 2,64 m">
+            <use href="#car-full"/>
+            <!-- Cotas generales -->
+            <g class="dims">
+              <path class="dim-line" d="M30 400 V420 M968 400 V420 M30 412 H968"/>
+              <text class="dim-text" x="499" y="436">4.342 mm</text>
+              <path class="dim-line" d="M215 380 V396 M790 380 V396 M215 388 H790"/>
+              <text class="dim-text" x="502" y="382">BATALLA 2.640</text>
+              <path class="dim-line" d="M985 52 H1000 M985 370 H1000 M994 52 V370"/>
+              <text class="dim-text" x="1016" y="215" transform="rotate(90 1016 215)">1.497 mm</text>
+              <path class="dim-line" d="M0 370 H1000" stroke-dasharray="4 6"/>
+            </g>
+            <path class="car-line" d="M872 344 H930 V352 H872 Z"/>
+            <!-- Puntos de anclaje de las cotas -->
+            <g class="pts">
+              <g id="pt-engine"><circle class="pt-pulse" cx="150" cy="238" r="7"/><circle class="pt" cx="150" cy="238" r="7"/><text class="pt-num" x="150" y="214">01</text></g>
+              <g id="pt-turbo"><circle class="pt-pulse" cx="275" cy="262" r="7"/><circle class="pt" cx="275" cy="262" r="7"/><text class="pt-num" x="275" y="238">02</text></g>
+              <g id="pt-gear"><circle class="pt-pulse" cx="330" cy="302" r="7"/><circle class="pt" cx="330" cy="302" r="7"/><text class="pt-num" x="330" y="278">03</text></g>
+              <g id="pt-badge"><circle class="pt-pulse" cx="905" cy="150" r="7"/><circle class="pt" cx="905" cy="150" r="7"/><text class="pt-num" x="905" y="126">04</text></g>
+              <g id="pt-fuel"><circle class="pt-pulse" cx="690" cy="318" r="7"/><circle class="pt" cx="690" cy="318" r="7"/><text class="pt-num" x="690" y="294">05</text></g>
+              <g id="pt-exhaust"><circle class="pt-pulse" cx="900" cy="346" r="7"/><circle class="pt" cx="900" cy="346" r="7"/><text class="pt-num" x="900" y="322">06</text></g>
+            </g>
+          </svg>
+        </figure>
+
+        <article class="spec" data-side="r" data-row="1" data-target="pt-badge">
+          <p class="spec__k"><span>Año</span><span class="spec__n">04</span></p>
+          <p class="spec__v"><span data-count="2007" data-from="1998" data-nogroup>2007</span></p>
+          <p class="spec__d">Focus MK2 · fase 1</p>
+        </article>
+        <article class="spec" data-side="r" data-row="2" data-target="pt-fuel">
+          <p class="spec__k"><span>Consumo</span><span class="spec__n">05</span></p>
+          <!-- ✎ [l/100 km] -->
+          <p class="spec__v"><span data-count="4.7" data-decimals="1" data-ph="[l/100 km]">4,7</span><span class="spec__u">l/100 km</span></p>
+          <p class="spec__d">Ciclo mixto · depósito 55 l</p>
+        </article>
+        <article class="spec" data-side="r" data-row="3" data-target="pt-exhaust">
+          <p class="spec__k"><span>Potencia</span><span class="spec__n">06</span></p>
+          <!-- ✎ [CV] -->
+          <p class="spec__v"><span data-count="109" data-ph="[CV]">109</span><span class="spec__u">CV</span></p>
+          <p class="spec__d">a 4000 rpm · 80 kW</p>
+        </article>
+
+        <svg class="cotas" aria-hidden="true"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       03 · CUADRO DE MANDOS
+       =================================================================== -->
+  <section class="section" id="cuadro" aria-labelledby="cuadro-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>03 — Cuadro de mandos</p>
+        <h2 class="h2 split split-mask" id="cuadro-title" data-split data-heading>Dar contacto</h2>
+        <p class="lede" data-reveal>Barrido de agujas, testigos en secuencia, calentadores y ralentí a ~800 rpm. Mantén pulsado el acelerador para subir de vueltas.</p>
+      </header>
+
+      <div class="cluster panel corners" data-panel data-cluster>
+        <div class="gauge gauge--rpm">
+          <svg viewBox="0 0 200 200" role="img" aria-label="Cuentarrevoluciones" data-gauge="rpm"></svg>
+        </div>
+        <div class="lcd" aria-hidden="true">
+          <div class="lcd__row"><span class="lcd__small">MARCHA</span><span class="lcd__small">KM/H</span></div>
+          <div class="lcd__row"><span class="lcd__gear" data-lcd="gear">N</span><span class="lcd__gear" data-lcd="speed">0</span></div>
+          <div class="lcd__row lcd__small"><span>TEMP</span><span data-lcd="coolant">--°C</span></div>
+          <div class="bar"><i data-lcd-bar="coolant"></i></div>
+          <div class="lcd__row lcd__small"><span>COMB.</span><span>68%</span></div>
+          <div class="bar"><i data-lcd-bar="fuel" style="transform:scaleX(.68)"></i></div>
+          <!-- ✎ [km] -->
+          <div class="lcd__row lcd__small"><span>ODO</span><span data-ph="[km]">243 518 km</span></div>
+        </div>
+        <div class="gauge gauge--speed">
+          <svg viewBox="0 0 200 200" role="img" aria-label="Velocímetro" data-gauge="speed"></svg>
+        </div>
+        <ul class="cluster__tells" aria-hidden="true">
+          <li class="tell" data-c="red"><svg><use href="#i-battery"/></svg></li>
+          <li class="tell" data-c="red"><svg><use href="#i-oil"/></svg></li>
+          <li class="tell" data-c="amber" data-glow><svg><use href="#i-glow"/></svg></li>
+          <li class="tell" data-c="amber"><svg><use href="#i-engine"/></svg></li>
+          <li class="tell" data-c="amber"><svg><use href="#i-abs"/></svg></li>
+          <li class="tell" data-c="red"><svg><use href="#i-brake"/></svg></li>
+        </ul>
+      </div>
+
+      <div class="cluster__controls">
+        <button class="btn btn--solid magnetic" type="button" data-throttle data-cursor="MANTÉN">
+          <span class="btn__label">Acelerar</span>
+        </button>
+        <button class="btn magnetic" type="button" data-ignition data-cursor="CONTACTO">
+          <span class="btn__label">Repetir contacto</span>
+        </button>
+      </div>
+      <p class="hint">Mantén pulsado · o usa <kbd>Espacio</kbd> con el botón enfocado</p>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       04 · TELEMETRÍA
+       =================================================================== -->
+  <section class="section blueprint" id="telemetria" aria-labelledby="telemetria-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>04 — Telemetría</p>
+        <h2 class="h2 split split-mask" id="telemetria-title" data-split data-heading>OBD en vivo</h2>
+        <p class="lede" data-reveal>Lectura simulada del puerto OBD-II con valores realistas: calentamiento, soplado del turbo y carga del alternador. Acelera y observa cómo responde.</p>
+      </header>
+
+      <div class="telemetry__bar">
+        <span class="live">EN VIVO · SIMULADO</span>
+        <span>ELM327 · ISO 15765-4 CAN</span>
+        <button class="btn magnetic" type="button" data-throttle data-cursor="MANTÉN"><span class="btn__label">Acelerar</span></button>
+      </div>
+
+      <div class="telemetry__grid" data-telemetry>
+        <article class="tcard panel corners" data-panel>
+          <div class="tcard__head"><h3 class="tcard__k">Refrigerante</h3><span class="tcard__pid">PID 0105</span></div>
+          <p class="tcard__v"><span data-t="coolant">--</span><small>°C</small></p>
+          <canvas data-graph="coolant" aria-hidden="true"></canvas>
+          <p class="tcard__range"><span>40</span><span>110 °C</span></p>
+        </article>
+        <article class="tcard panel corners" data-panel>
+          <div class="tcard__head"><h3 class="tcard__k">Presión turbo</h3><span class="tcard__pid">PID 010B</span></div>
+          <p class="tcard__v"><span data-t="boost">--</span><small>bar</small></p>
+          <canvas data-graph="boost" aria-hidden="true"></canvas>
+          <p class="tcard__range"><span>0.0</span><span>1.4 bar</span></p>
+        </article>
+        <article class="tcard panel corners" data-panel>
+          <div class="tcard__head"><h3 class="tcard__k">Régimen</h3><span class="tcard__pid">PID 010C</span></div>
+          <p class="tcard__v"><span data-t="rpm">--</span><small>rpm</small></p>
+          <canvas data-graph="rpm" aria-hidden="true"></canvas>
+          <p class="tcard__range"><span>0</span><span>5000 rpm</span></p>
+        </article>
+        <article class="tcard panel corners" data-panel>
+          <div class="tcard__head"><h3 class="tcard__k">Batería</h3><span class="tcard__pid">PID 0142</span></div>
+          <p class="tcard__v"><span data-t="volt">--</span><small>V</small></p>
+          <canvas data-graph="volt" aria-hidden="true"></canvas>
+          <p class="tcard__range"><span>11.5</span><span>15.0 V</span></p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       05 · DESPIECE (pin + scrub)
+       =================================================================== -->
+  <section class="section explode" id="despiece" aria-labelledby="despiece-title">
+    <div class="explode__pin blueprint">
+      <header class="section__head wrap" style="margin-bottom:0;width:100%">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>05 — Despiece</p>
+        <h2 class="h2 split split-mask" id="despiece-title" data-split data-heading>Pieza a pieza</h2>
+      </header>
+
+      <div class="explode__stage" data-explode>
+        <svg class="xp" viewBox="-40 -200 1080 700" role="img" aria-label="Vista explosionada del Focus: carrocería, motor, turbo, suspensión, frenos y ruedas">
+          <!-- Suelo -->
+          <path d="M-40 370 H1040" stroke="rgba(170,190,255,.25)" stroke-dasharray="2 8"/>
+          <!-- Frenos (detrás de las ruedas) -->
+          <g class="xp-part xp-brake" data-part="brakes">
+            <g transform="translate(215 301)"><circle r="40"/><circle r="16"/><path class="xp-accent" d="M-30 -30 A42 42 0 0 1 30 -30 L24 -22 A32 32 0 0 0 -24 -22 Z"/></g>
+            <g transform="translate(790 301)"><circle r="36"/><circle r="14"/><path class="xp-accent" d="M-26 -28 A38 38 0 0 1 26 -28 L21 -20 A29 29 0 0 0 -21 -20 Z"/></g>
+          </g>
+          <!-- Suspensión: McPherson delante, multibrazo detrás -->
+          <g class="xp-part xp-susp" data-part="susp">
+            <g transform="translate(215 0)"><rect x="-7" y="150" width="14" height="110"/><path d="M-20 170 L20 180 L-20 190 L20 200 L-20 210 L20 220 L-20 230 L20 240"/></g>
+            <g transform="translate(790 0)"><rect x="-6" y="170" width="12" height="90"/><path d="M-18 190 L18 198 L-18 206 L18 214 L-18 222 L18 230 L-18 238"/><path d="M-80 290 L80 290 L60 300 L-60 300 Z"/></g>
+          </g>
+          <!-- Motor DV6 -->
+          <g class="xp-part xp-engine" data-part="engine">
+            <rect x="80" y="196" width="150" height="96" rx="6"/>
+            <rect class="xp-accent" x="88" y="178" width="134" height="22" rx="4"/>
+            <circle cx="112" cy="232" r="11"/><circle cx="142" cy="232" r="11"/><circle cx="172" cy="232" r="11"/><circle cx="202" cy="232" r="11"/>
+            <circle cx="96" cy="272" r="14"/>
+            <path d="M230 250 H270 V288 H230"/>
+          </g>
+          <!-- Turbo -->
+          <g class="xp-part xp-turbo" data-part="turbo">
+            <circle cx="290" cy="232" r="24"/>
+            <path class="xp-accent" d="M290 232 m-12 0 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0"/>
+            <path d="M310 220 L340 214 L344 228 L312 240 Z"/>
+          </g>
+          <!-- Ruedas -->
+          <g class="xp-part xp-wheel" data-part="wheel-f"><use href="#wheel" x="215" y="301"/></g>
+          <g class="xp-part xp-wheel" data-part="wheel-r"><use href="#wheel" x="790" y="301"/></g>
+          <!-- Carrocería -->
+          <g class="xp-part xp-body" data-part="body"><use href="#car-shell"/></g>
+          <!-- Líneas guía (aparecen en explosión) -->
+          <g class="xp-leads" opacity="0">
+            <path class="xp-lead" d="M500 338 V128"/>
+            <path class="xp-lead" d="M155 244 L85 274"/>
+            <path class="xp-lead" d="M290 232 L410 192"/>
+            <path class="xp-lead" d="M215 301 L85 411 M790 301 L920 411"/>
+            <path class="xp-lead" d="M215 301 V371 M790 301 V371"/>
+          </g>
+        </svg>
+        <div class="xp-labels" aria-hidden="true">
+          <!-- data-x / data-y en unidades del viewBox; el JS las proyecta a píxeles -->
+          <span class="xp-label" data-label="body" data-x="250" data-y="-78">Carrocería<small>5 puertas · Cx 0,32</small></span>
+          <span class="xp-label" data-label="engine" data-x="85" data-y="170">Motor<small>1.6 TDCi DV6 · 16V</small></span>
+          <span class="xp-label" data-label="turbo" data-x="410" data-y="160">Turbo<small>Geometría variable</small></span>
+          <span class="xp-label" data-label="susp" data-x="790" data-y="118">Suspensión<small>McPherson / Control Blade</small></span>
+          <span class="xp-label" data-label="brakes" data-x="330" data-y="384">Frenos<small>Discos ventilados · ABS</small></span>
+          <span class="xp-label" data-label="wheel" data-x="920" data-y="338">Ruedas<small>205/55 R16</small></span>
+        </div>
+      </div>
+
+      <div class="explode__meter wrap" style="width:100%">
+        <span>ENSAMBLAJE</span>
+        <span class="explode__track"><i data-xp-bar></i></span>
+        <output data-xp-out>100%</output>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       06 · GALERÍA
+       =================================================================== -->
+  <section class="section gallery" id="galeria" aria-labelledby="galeria-title">
+    <div class="gallery__pin">
+      <header class="section__head gallery__head" style="margin-bottom:0">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>06 — Galería</p>
+        <h2 class="h2 split split-mask" id="galeria-title" data-split data-heading>Luz y chapa</h2>
+      </header>
+      <div class="gallery__viewport">
+        <ul class="gallery__track" data-cursor="ARRASTRA">
+          <!-- ✎ PLACEHOLDERS: [galeria-1.jpg] … [galeria-6.jpg] -->
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-1.jpg" alt="Perfil lateral del Focus MK2" loading="lazy" decoding="async" width="1200" height="1500">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-1.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Perfil</b><span>01</span></figcaption>
+          </figure></li>
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-2.jpg" alt="Frontal del Focus con los faros encendidos de noche" loading="lazy" decoding="async" width="1600" height="1100">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-2.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Noche</b><span>02</span></figcaption>
+          </figure></li>
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-3.jpg" alt="Interior y cuadro de mandos del Focus" loading="lazy" decoding="async" width="1200" height="1500">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-3.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Interior</b><span>03</span></figcaption>
+          </figure></li>
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-4.jpg" alt="Vano motor con el 1.6 TDCi" loading="lazy" decoding="async" width="1200" height="1500">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-4.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Vano motor</b><span>04</span></figcaption>
+          </figure></li>
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-5.jpg" alt="Detalle de llanta y disco de freno" loading="lazy" decoding="async" width="1600" height="1100">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-5.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Llanta</b><span>05</span></figcaption>
+          </figure></li>
+          <li class="shot"><figure>
+            <div class="shot__frame"><div class="media" data-media>
+              <img src="galeria-6.jpg" alt="Trasera del Focus con los pilotos encendidos" loading="lazy" decoding="async" width="1200" height="1500">
+              <div class="media__ph" aria-hidden="true"><svg class="car-svg" viewBox="0 0 1000 420"><use href="#car-full"/></svg><code>[galeria-6.jpg]</code></div>
+            </div><span class="shot__glare"></span><span class="shot__streak"></span></div>
+            <figcaption><b>Trasera</b><span>06</span></figcaption>
+          </figure></li>
+        </ul>
+      </div>
+      <p class="gallery__foot" aria-hidden="true"><span>ARRASTRA O HAZ SCROLL</span><span class="explode__track"><i data-gal-bar></i></span></p>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       07 · HISTORIAL Y MODS
+       =================================================================== -->
+  <section class="section history" id="historial" aria-labelledby="historial-title">
+    <div class="wrap">
+      <header class="section__head">
+        <p class="eyebrow"><span class="eyebrow__rule"></span>07 — Historial y mods</p>
+        <h2 class="h2 split split-mask" id="historial-title" data-split data-heading>Kilómetros vividos</h2>
+      </header>
+
+      <div class="history__body" data-history>
+        <div class="road" aria-hidden="true">
+          <div class="road__asphalt"><div class="road__marks"></div></div>
+          <div class="road__car">
+            <svg viewBox="0 0 26 120">
+              <defs><linearGradient id="g-beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe8ff" stop-opacity=".55"/><stop offset="1" stop-color="#dfe8ff" stop-opacity="0"/></linearGradient></defs>
+              <path d="M3 44 L-10 120 L36 120 L23 44 Z" fill="url(#g-beam)"/>
+              <rect x="2" y="0" width="22" height="46" rx="7" fill="#2a54c0" stroke="#bcd0ff" stroke-width=".8"/>
+              <rect x="5" y="25" width="16" height="10" rx="2" fill="#070a12"/>
+              <rect x="5" y="7" width="16" height="7" rx="2" fill="#070a12"/>
+              <rect x="3" y="42" width="5" height="3" rx="1" fill="#fff"/><rect x="18" y="42" width="5" height="3" rx="1" fill="#fff"/>
+              <rect x="3" y="1" width="5" height="2" rx="1" fill="#ff4040"/><rect x="18" y="1" width="5" height="2" rx="1" fill="#ff4040"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- ✎ PLACEHOLDER: [lista de hitos] — edita fechas, textos y km -->
+        <ol class="milestones">
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2007">2007</time>
+            <h3>Primera matriculación</h3>
+            <p>Sale de fábrica en Saarlouis con el 1.6 TDCi y acabado Trend. 0 km.</p>
+            <span class="tag">Origen</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2014">[año de compra]</time>
+            <h3>Llega a manos de Javier</h3>
+            <p>Revisión completa pre-compra, aceite 5W-30 y filtros. 118 000 km.</p>
+            <span class="tag">Hito</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2016">2016</time>
+            <h3>Kit de distribución y bomba de agua</h3>
+            <p>Correa, tensor y bomba sustituidos según intervalo. 150 000 km.</p>
+            <span class="tag">Mantenimiento</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2018">2018</time>
+            <h3>Embrague y volante bimasa</h3>
+            <p>Adiós a las vibraciones en ralentí. Cambio más suave que nunca.</p>
+            <span class="tag">Mantenimiento</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2020">2020</time>
+            <h3>Llantas 17" y neumáticos nuevos</h3>
+            <p>205/50 R17 para una pisada más firme y mejor estética.</p>
+            <span class="tag tag--mod">Mod</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2022">2022</time>
+            <h3>Limpieza EGR / FAP</h3>
+            <p>Recupera la respuesta desde abajo. Consumo de nuevo por debajo de 5 l.</p>
+            <span class="tag">Mantenimiento</span>
+          </div></li>
+          <li class="milestone"><div class="milestone__card panel">
+            <time datetime="2024">2024</time>
+            <h3>Faros restaurados y bombillas LED</h3>
+            <p>Ópticas pulidas y barnizadas: luz blanca y mirada de coche nuevo.</p>
+            <span class="tag tag--mod">Mod</span>
+          </div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       08 · CIERRE
+       =================================================================== -->
+  <section class="section outro" id="cierre" aria-labelledby="cierre-title" data-outro>
+    <h2 class="outro__title" id="cierre-title">
+      <span class="sr-only">El coche de Javier</span>
+      <span class="line split" data-split data-magnetic-text aria-hidden="true">El coche</span>
+      <span class="line line--accent split" data-split data-magnetic-text aria-hidden="true">de Javier</span>
+    </h2>
+
+    <div class="plate-wrap">
+      <!-- ✎ PLACEHOLDER: [texto a elección] — matrícula decorativa, NO la real -->
+      <div class="plate" role="img" aria-label="Matrícula decorativa: 2007 TDC">
+        <span class="plate__eu" aria-hidden="true">
+          <svg class="plate__stars" viewBox="0 0 24 24"><g fill="#ffd200"><circle cx="12" cy="3" r="1.4"/><circle cx="16.5" cy="4.2" r="1.4"/><circle cx="19.8" cy="7.5" r="1.4"/><circle cx="21" cy="12" r="1.4"/><circle cx="19.8" cy="16.5" r="1.4"/><circle cx="16.5" cy="19.8" r="1.4"/><circle cx="12" cy="21" r="1.4"/><circle cx="7.5" cy="19.8" r="1.4"/><circle cx="4.2" cy="16.5" r="1.4"/><circle cx="3" cy="12" r="1.4"/><circle cx="4.2" cy="7.5" r="1.4"/><circle cx="7.5" cy="4.2" r="1.4"/></g></svg>
+          E
+        </span>
+        <span class="plate__txt" aria-hidden="true">2007 TDC</span>
+      </div>
+    </div>
+
+    <p class="outro__sub" data-reveal>Ford Focus MK2 · 1.6 TDCi · 2007. Más de 240 000 km de carreteras, viajes y mantenimiento hecho con cariño.</p>
+    <a class="btn magnetic" href="#top" data-cursor="ARRIBA" data-reveal><span class="btn__label">Volver al inicio ↑</span></a>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>© <span data-year>2026</span> · Hecho para Javier</span>
+  <span>Web no oficial. Ford y Focus son marcas de Ford Motor Company.</span>
+</footer>
+
+<!-- =====================================================================
+     LIBRERÍAS (CDN). Three.js se inyecta en diferido desde el JS.
+     ===================================================================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js"></script>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================================
+   00 · ENTORNO Y UTILIDADES
+   ========================================================================= */
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+
+const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
+const ENV = {
+  reduced: mqReduce.matches,
+  fine: matchMedia('(hover: hover) and (pointer: fine)').matches,
+  gsap: typeof window.gsap !== 'undefined' && typeof window.ScrollTrigger !== 'undefined',
+  lenis: typeof window.Lenis !== 'undefined',
+};
+ENV.motion = ENV.gsap && !ENV.reduced;
+
+const $ = (s, c = document) => c.querySelector(s);
+const $$ = (s, c = document) => Array.from(c.querySelectorAll(s));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const damp = (a, b, lambda, dt) => lerp(a, b, 1 - Math.exp(-lambda * dt));
+const rand = (a, b) => a + Math.random() * (b - a);
+const fmt = (v, d = 0) => v.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+if (ENV.gsap) gsap.registerPlugin(ScrollTrigger);
+
+/** Ticker único: todo el movimiento continuo pasa por un solo rAF. */
+const Ticker = (() => {
+  const subs = new Set();
+  let last = performance.now();
+  const run = (now) => {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    subs.forEach((fn) => fn(dt, now / 1000));
+  };
+  if (ENV.gsap) {
+    gsap.ticker.add(() => run(performance.now()));
+  } else {
+    const loop = (t) => { run(t); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+  return { add: (fn) => subs.add(fn), remove: (fn) => subs.delete(fn) };
+})();
+
+/** Observa visibilidad para pausar trabajo fuera de pantalla. */
+const onVisible = (el, cb, rootMargin = '0px') => {
+  const io = new IntersectionObserver(([e]) => cb(e.isIntersecting), { rootMargin });
+  io.observe(el);
+  return io;
+};
+
+/**
+ * Split por caracteres. Agrupa por palabras (evita cortes feos)
+ * y deja a los lectores de pantalla el texto original (sr-only / aria-hidden).
+ */
+const splitChars = (el) => {
+  if (el.dataset.splitDone) return $$('.char', el);
+  const words = el.textContent.trim().split(/\s+/);
+  el.textContent = '';
+  words.forEach((w, i) => {
+    const word = document.createElement('span');
+    word.className = 'word';
+    [...w].forEach((ch) => {
+      const c = document.createElement('span');
+      c.className = 'char';
+      c.textContent = ch;
+      word.appendChild(c);
+    });
+    el.appendChild(word);
+    if (i < words.length - 1) el.appendChild(document.createTextNode(' '));
+  });
+  el.dataset.splitDone = '1';
+  return $$('.char', el);
+};
+
+/* =========================================================================
+   01 · IMÁGENES CON FALLBACK A PLACEHOLDER
+   ========================================================================= */
+const initMedia = () => {
+  $$('[data-media]').forEach((m) => {
+    const img = $('img', m);
+    if (!img) return;
+    const miss = () => m.classList.add('is-missing');
+    if (img.complete && img.naturalWidth === 0) miss();
+    else img.addEventListener('error', miss, { once: true });
+  });
+};
+
+/* =========================================================================
+   02 · SIMULACIÓN DE MOTOR (fuente de verdad para cuadro, OBD y sonido)
+   ========================================================================= */
+const Engine = {
+  state: 'off',          // off | cranking | running
+  rpm: 0, speed: 0, boost: 0, coolant: 46, volt: 12.6,
+  throttle: 0, userThrottle: 0, autoThrottle: 0,
+  auto: false, autoTimer: 0, idleT: 0, crankT: 0, t: 0,
+
+  start() {
+    this.state = 'cranking';
+    this.crankT = 0;
+  },
+  get gear() {
+    const v = this.speed;
+    if (v < 2) return 'N';
+    return v < 22 ? '1' : v < 42 ? '2' : v < 68 ? '3' : v < 98 ? '4' : '5';
+  },
+  update(dt) {
+    this.t += dt;
+    // Autopiloto suave (solo cuando la telemetría está a la vista y el usuario no toca nada)
+    this.idleT += dt;
+    if (this.auto && this.state === 'running' && this.idleT > 2.5) {
+      this.autoTimer -= dt;
+      if (this.autoTimer <= 0) {
+        const blip = this.autoThrottle === 0;
+        this.autoThrottle = blip ? rand(0.25, 0.8) : 0;
+        this.autoTimer = blip ? rand(0.5, 1.6) : rand(1, 3.2);
+      }
+    } else {
+      this.autoThrottle = 0;
+    }
+
+    const want = this.state === 'running' ? Math.max(this.userThrottle, this.autoThrottle) : 0;
+    this.throttle = damp(this.throttle, want, 9, dt);
+
+    if (this.state === 'off') {
+      this.rpm = damp(this.rpm, 0, 3, dt);
+      this.volt = damp(this.volt, 12.6, 2, dt);
+    } else if (this.state === 'cranking') {
+      this.crankT += dt;
+      this.rpm = 230 + Math.sin(this.crankT * 48) * 45;
+      this.volt = 10.6 + Math.sin(this.crankT * 30) * 0.25;
+      if (this.crankT > 0.95) {
+        this.state = 'running';
+        this.rpm = 1250; // "catch" con sobreimpulso
+      }
+    } else {
+      const target = Math.min(4600, 800 + this.throttle * 3700);
+      const k = target > this.rpm ? 3.6 : 1.9;
+      this.rpm = damp(this.rpm, target, k, dt);
+      // Vibración de ralentí diésel: ruido + oscilación lenta
+      this.rpm += Math.sin(this.t * 2.3) * 3 + (Math.random() - 0.5) * 14;
+      if (this.rpm > 4550) this.rpm -= rand(80, 200); // corte de inyección
+      const boostTarget = clamp((this.rpm - 1400) / 1700, 0, 1) * (0.25 + 0.95 * this.throttle);
+      this.boost = damp(this.boost, boostTarget, 2.4, dt); // turbo lag
+      this.coolant = damp(this.coolant, 89 + this.throttle * 4, 0.035 * (1 + this.rpm / 2500), dt);
+      this.volt = 14.22 + Math.sin(this.t * 0.8) * 0.05 + (Math.random() - 0.5) * 0.03 - this.throttle * 0.06;
+    }
+    const sTarget = this.state === 'running' ? this.throttle * 185 : 0;
+    this.speed = damp(this.speed, sTarget, this.throttle > 0.05 ? 0.35 : 0.18, dt);
+  },
+};
+Ticker.add((dt) => Engine.update(dt));
+
+/** Botones de acelerador: mantener pulsado (puntero o teclado). */
+const initThrottle = () => {
+  const setT = (btn, on) => {
+    Engine.userThrottle = on ? 1 : 0;
+    Engine.idleT = 0;
+    btn.classList.toggle('is-held', on);
+    if (on && Engine.state === 'off') Engine.start();
+  };
+  $$('[data-throttle]').forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => { btn.setPointerCapture(e.pointerId); setT(btn, true); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => btn.addEventListener(ev, () => setT(btn, false)));
+    btn.addEventListener('keydown', (e) => {
+      if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); setT(btn, true); }
+    });
+    btn.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'Enter') setT(btn, false); });
+    btn.addEventListener('blur', () => setT(btn, false));
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
+};
+
+/* =========================================================================
+   03 · SONIDO DIÉSEL SINTETIZADO (Web Audio, sin archivos, nunca autoplay)
+   ✎ Si prefieres un audio real, sustituye por [arranque.mp3].
+   ========================================================================= */
+const Sound = (() => {
+  let ctx = null, nodes = null, on = false;
+
+  const noiseBuffer = (c) => {
+    const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  };
+
+  const build = () => {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    const comp = ctx.createDynamicsCompressor(); comp.connect(master);
+
+    // Cuerpo del motor: armónicos de la frecuencia de encendido (4 cil. → rpm/30 Hz)
+    const body = ctx.createGain(); body.gain.value = 0;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 3;
+    const o1 = ctx.createOscillator(); o1.type = 'sawtooth';
+    const o2 = ctx.createOscillator(); o2.type = 'square';
+    const o2g = ctx.createGain(); o2g.gain.value = 0.35;
+    o1.connect(lp); o2.connect(o2g).connect(lp); lp.connect(body).connect(comp);
+
+    // Traqueteo diésel: ruido paso-banda modulado a la frecuencia de encendido
+    const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer(ctx); noise.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2300; bp.Q.value = 1.4;
+    const clat = ctx.createGain(); clat.gain.value = 0;
+    const mod = ctx.createOscillator(); mod.type = 'sawtooth';
+    const modAmt = ctx.createGain(); modAmt.gain.value = 0.5;
+    const dc = ctx.createConstantSource(); dc.offset.value = 0.5;
+    const clatLevel = ctx.createGain(); clatLevel.gain.value = 0;
+    noise.connect(bp).connect(clat).connect(clatLevel).connect(comp);
+    mod.connect(modAmt).connect(clat.gain);
+    dc.connect(clat.gain);
+
+    // Motor de arranque
+    const starter = ctx.createOscillator(); starter.type = 'sawtooth'; starter.frequency.value = 62;
+    const stLfo = ctx.createOscillator(); stLfo.frequency.value = 9;
+    const stLfoG = ctx.createGain(); stLfoG.gain.value = 0.5;
+    const stG = ctx.createGain(); stG.gain.value = 0;
+    const stLp = ctx.createBiquadFilter(); stLp.type = 'lowpass'; stLp.frequency.value = 900;
+    starter.connect(stLp).connect(stG).connect(comp);
+    stLfo.connect(stLfoG).connect(stG.gain);
+
+    // Silbido del turbo
+    const whistle = ctx.createOscillator(); whistle.type = 'sine';
+    const whG = ctx.createGain(); whG.gain.value = 0;
+    whistle.connect(whG).connect(comp);
+
+    [o1, o2, noise, mod, dc, starter, stLfo, whistle].forEach((n) => n.start());
+    nodes = { master, body, lp, o1, o2, clatLevel, mod, stG, stLfoG, whistle, whG, bp };
+  };
+
+  const tick = () => {
+    if (!on || !nodes) return;
+    const t = ctx.currentTime, n = nodes, k = 0.06;
+    const cranking = Engine.state === 'cranking';
+    const running = Engine.state === 'running';
+    const f = Math.max(Engine.rpm, 1) / 30; // frecuencia de encendido
+    n.o1.frequency.setTargetAtTime(f, t, k);
+    n.o2.frequency.setTargetAtTime(f * 2, t, k);
+    n.mod.frequency.setTargetAtTime(f, t, k);
+    n.lp.frequency.setTargetAtTime(260 + Engine.throttle * 1100, t, k);
+    n.bp.frequency.setTargetAtTime(2100 + Engine.throttle * 900, t, k);
+    n.body.gain.setTargetAtTime(running ? 0.55 + Engine.throttle * 0.3 : 0, t, 0.08);
+    n.clatLevel.gain.setTargetAtTime(running ? 0.22 - Engine.throttle * 0.08 : 0, t, 0.08);
+    n.stG.gain.setTargetAtTime(cranking ? 0.35 : 0, t, 0.03);
+    n.stLfoG.gain.setTargetAtTime(cranking ? 0.3 : 0, t, 0.03);
+    n.whistle.frequency.setTargetAtTime(1800 + Engine.boost * 3600, t, 0.1);
+    n.whG.gain.setTargetAtTime(Engine.boost * 0.018, t, 0.1);
+  };
+  Ticker.add(tick);
+
+  const setUI = () => {
+    $$('[data-sound]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(on));
+      const l = $('[data-sound-label]', b);
+      if (l) l.textContent = on ? (b.closest('.nav') ? 'Sonido on' : 'Apagar motor') : (b.closest('.nav') ? 'Sonido' : 'Arrancar motor');
+    });
+  };
+
+  const toggle = async () => {
+    on = !on;
+    setUI();
+    if (on) {
+      if (!ctx) build();
+      await ctx.resume();
+      nodes.master.gain.setTargetAtTime(0.32, ctx.currentTime, 0.05);
+      Engine.start(); // siempre suena el arranque al activar
+    } else if (ctx) {
+      nodes.master.gain.setTargetAtTime(0, ctx.currentTime, 0.15);
+      setTimeout(() => { if (!on) ctx.suspend(); }, 700);
+    }
+  };
+
+  const init = () => $$('[data-sound]').forEach((b) => b.addEventListener('click', toggle));
+  return { init };
+})();
+
+/* =========================================================================
+   04 · SMOOTH SCROLL (Lenis) sincronizado con ScrollTrigger
+   ========================================================================= */
+let lenis = null;
+const Scroll = { velocity: 0 };
+const initSmoothScroll = () => {
+  if (ENV.motion && ENV.lenis) {
+    lenis = new Lenis({ lerp: 0.09, wheelMultiplier: 1, smoothWheel: true });
+    lenis.on('scroll', (e) => { Scroll.velocity = e.velocity; ScrollTrigger.update(); });
+    gsap.ticker.add((t) => lenis.raf(t * 1000));
+    gsap.ticker.lagSmoothing(0);
+    lenis.stop(); // hasta que termine el loader
+  }
+  // Anclas internas
+  $$('a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const id = a.getAttribute('href');
+      const target = id === '#top' ? document.body : $(id);
+      if (!target) return;
+      e.preventDefault();
+      const behavior = ENV.reduced ? 'auto' : 'smooth';
+      if (lenis) lenis.scrollTo(id === '#top' ? 0 : target, { duration: 1.6 });
+      else if (id === '#top') window.scrollTo({ top: 0, behavior });
+      else target.scrollIntoView({ behavior });
+      const focusEl = id === '#top' ? $('#hero-title') : target;
+      focusEl.setAttribute('tabindex', '-1');
+      focusEl.focus({ preventScroll: true });
+    });
+  });
+};
+
+/* =========================================================================
+   05 · CURSOR PERSONALIZADO
+   ========================================================================= */
+const initCursor = () => {
+  if (!ENV.fine || !ENV.motion) return;
+  document.documentElement.classList.add('has-cursor');
+  const root = $('.cursor');
+  const dot = $('.cursor__dot', root);
+  const ring = $('.cursor__ring', root);
+  const label = $('.cursor__label', root);
+  const dx = gsap.quickSetter(dot, 'x', 'px'), dy = gsap.quickSetter(dot, 'y', 'px');
+  const rx = gsap.quickTo(ring, 'x', { duration: 0.45, ease: 'power3' });
+  const ry = gsap.quickTo(ring, 'y', { duration: 0.45, ease: 'power3' });
+
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    dx(e.clientX); dy(e.clientY); rx(e.clientX); ry(e.clientY);
+    root.classList.remove('is-hidden');
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => root.classList.add('is-hidden'));
+  window.addEventListener('pointerdown', () => root.classList.add('is-down'));
+  window.addEventListener('pointerup', () => root.classList.remove('is-down'));
+
+  // Delegación: el elemento interactivo más cercano define el texto
+  document.addEventListener('pointerover', (e) => {
+    const t = e.target.closest('[data-cursor], a, button');
+    if (t) {
+      label.textContent = t.dataset.cursor || 'VER';
+      root.classList.add('is-hover');
+    } else {
+      root.classList.remove('is-hover');
+    }
+  });
+};
+
+/* =========================================================================
+   06 · BOTONES MAGNÉTICOS
+   ========================================================================= */
+const initMagnetic = () => {
+  if (!ENV.fine || !ENV.motion) return;
+  $$('.magnetic').forEach((el) => {
+    const inner = $('.btn__label', el) || el;
+    const xTo = gsap.quickTo(el, 'x', { duration: 0.6, ease: 'power3' });
+    const yTo = gsap.quickTo(el, 'y', { duration: 0.6, ease: 'power3' });
+    const ixTo = gsap.quickTo(inner, 'x', { duration: 0.6, ease: 'power3' });
+    const iyTo = gsap.quickTo(inner, 'y', { duration: 0.6, ease: 'power3' });
+    let rect = null;
+    el.addEventListener('pointerenter', () => { rect = el.getBoundingClientRect(); });
+    el.addEventListener('pointermove', (e) => {
+      if (!rect) rect = el.getBoundingClientRect();
+      const x = e.clientX - (rect.left + rect.width / 2);
+      const y = e.clientY - (rect.top + rect.height / 2);
+      xTo(x * 0.35); yTo(y * 0.45); ixTo(x * 0.15); iyTo(y * 0.2);
+    });
+    el.addEventListener('pointerleave', () => {
+      rect = null;
+      gsap.to([el, inner], { x: 0, y: 0, duration: 1, ease: 'elastic.out(1, 0.35)', overwrite: true });
+    });
+  });
+};
+
+/* =========================================================================
+   07 · NAV: ocultar al bajar, sección activa, barra de progreso
+   ========================================================================= */
+const initNav = () => {
+  const nav = $('#nav');
+  const bar = $('.progress');
+  const links = $$('.nav__links a');
+  let lastY = window.scrollY;
+  const setBar = ENV.gsap ? gsap.quickSetter(bar, 'scaleX') : (v) => { bar.style.transform = `scaleX(${v})`; };
+
+  const onScroll = () => {
+    const y = window.scrollY;
+    const max = document.documentElement.scrollHeight - innerHeight;
+    setBar(max > 0 ? y / max : 0);
+    nav.classList.toggle('is-hidden', y > lastY && y > 200 && !nav.contains(document.activeElement));
+    lastY = y;
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  const map = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      const a = map.get(e.target.id);
+      if (a && e.isIntersecting) { links.forEach((l) => l.removeAttribute('aria-current')); a.setAttribute('aria-current', 'true'); }
+    });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  map.forEach((_, id) => { const s = document.getElementById(id); if (s) io.observe(s); });
+};
+
+/* =========================================================================
+   08 · LOADER: llave de contacto + testigos
+   ========================================================================= */
+const runLoader = () => new Promise((resolve) => {
+  const loader = $('#loader');
+  const state = $('.loader__state', loader);
+  const pct = $('.loader__pct', loader);
+  const tells = $$('.tell', loader);
+  const marks = $$('.mark', loader);
+  const key = $('.key', loader);
+
+  const assetsReady = Promise.race([
+    Promise.all([
+      document.fonts ? document.fonts.ready : Promise.resolve(),
+      new Promise((r) => (document.readyState === 'complete' ? r() : addEventListener('load', r, { once: true }))),
+    ]),
+    new Promise((r) => setTimeout(r, 4000)), // nunca bloquear más de 4 s
+  ]);
+
+  const finish = () => {
+    loader.remove();
+    document.documentElement.classList.add('is-ready');
+    resolve();
+  };
+
+  if (!ENV.motion) {
+    assetsReady.then(() => {
+      if (ENV.gsap) gsap.to(loader, { autoAlpha: 0, duration: 0.3, onComplete: finish });
+      else finish();
+    });
+    return;
+  }
+
+  const counter = { v: 0 };
+  const markOn = (i) => marks.forEach((m, j) => m.classList.toggle('is-on', i === j));
+  const rot = (deg) => ({ rotation: deg, svgOrigin: '100 100' });
+
+  gsap.set(key, rot(-45));
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } });
+  tl.from('.ignition', { scale: 0.85, autoAlpha: 0, duration: 0.6, ease: 'power3.out' })
+    .add(() => markOn(0))
+    .to(key, { ...rot(0), duration: 0.35, onComplete: () => markOn(1) }, '+=0.1')
+    .to(counter, { v: 34, duration: 0.35, onUpdate: () => (pct.textContent = String(Math.round(counter.v)).padStart(3, '0')) }, '<')
+    .to(key, { ...rot(45), duration: 0.3, onComplete: () => { markOn(2); state.textContent = 'TESTIGOS'; } })
+    .add(() => tells.forEach((t) => t.classList.add('is-on')))
+    .to(counter, { v: 68, duration: 0.6, onUpdate: () => (pct.textContent = String(Math.round(counter.v)).padStart(3, '0')) })
+    // Se apagan en secuencia; el de calentadores (diésel) aguanta un poco más
+    .add(() => tells.filter((t) => !t.hasAttribute('data-glow')).forEach((t, i) => setTimeout(() => t.classList.remove('is-on'), i * 110)))
+    .add(() => { state.textContent = 'PRECALENTANDO'; }, '+=0.2')
+    .add(() => $('[data-glow]', loader).classList.remove('is-on'), '+=0.55')
+    .addPause('+=0.01', () => assetsReady.then(() => tl.resume()))
+    .to(key, { ...rot(88), duration: 0.22, ease: 'power2.in', onComplete: () => { markOn(3); state.textContent = 'ARRANQUE'; } })
+    .to('.ignition', { x: 1.5, duration: 0.04, repeat: 13, yoyo: true, ease: 'none' })
+    .to(counter, { v: 100, duration: 0.5, onUpdate: () => (pct.textContent = String(Math.round(counter.v)).padStart(3, '0')) }, '<')
+    .to(key, { ...rot(45), duration: 0.35, ease: 'back.out(2)', onComplete: () => { markOn(2); state.textContent = 'EN MARCHA'; } })
+    .to('.loader__inner', { yPercent: -12, autoAlpha: 0, duration: 0.6, ease: 'power3.in' }, '+=0.25')
+    .to(loader, { clipPath: 'inset(0% 0% 100% 0%)', duration: 0.9, ease: 'expo.inOut', onComplete: finish }, '-=0.25');
+
+  const skip = () => { if (tl.progress() < 1) { tl.pause(); gsap.to(loader, { autoAlpha: 0, duration: 0.35, onComplete: finish }); } };
+  $('.loader__skip', loader).addEventListener('click', skip);
+  const onKey = (e) => { if (e.key === 'Escape') { skip(); removeEventListener('keydown', onKey); } };
+  addEventListener('keydown', onKey);
+});
+
+/* =========================================================================
+   09 · HERO: barrido de faros + fondo Three.js
+   ========================================================================= */
+const prepHero = () => {
+  $$('.hero__title [data-split]').forEach(splitChars);
+  if (!ENV.motion) return;
+  gsap.set('.hero__shade', { autoAlpha: 1 });
+  gsap.set('.hero__title .char', { autoAlpha: 0, yPercent: 30 });
+  gsap.set('.hero__title .outline', { autoAlpha: 0 });
+  gsap.set('.hero [data-reveal]', { autoAlpha: 0, y: 20 });
+  gsap.set('.hero__car', { scale: 1.06, y: 30 });
+};
+
+const playHero = () => {
+  if (!ENV.motion) return;
+  const chars = $$('.hero__title .char');
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  // El haz de luz (faros) barre el titular de izquierda a derecha
+  tl.set('.hero__beam', { autoAlpha: 1, xPercent: -120 })
+    .to('.hero__beam', { xPercent: 290, duration: 1.8, ease: 'power2.inOut' })
+    .to('.hero__title .outline', { autoAlpha: 1, duration: 0.6 }, 0)
+    .to(chars, { autoAlpha: 1, yPercent: 0, duration: 0.9, stagger: 0.09, ease: 'expo.out' }, 0.25)
+    .to('.hero__beam', { autoAlpha: 0, duration: 0.4 }, '-=0.4')
+    // El coche emerge de la oscuridad y un haz lo recorre
+    .to('.hero__shade', { autoAlpha: 0, duration: 1.6, ease: 'power2.inOut' }, 0.6)
+    .to('.hero__car', { scale: 1, y: 0, duration: 2.2, ease: 'expo.out' }, 0.6)
+    .to('.hero__glare', { xPercent: 240, duration: 1.6, ease: 'power2.inOut' }, 1.1)
+    .to('.hero-car__beam', { opacity: 1, duration: 0.2, repeat: 1, yoyo: true, ease: 'none' }, 1.4)
+    .to('.hero-car__beam', { opacity: 0.85, duration: 0.3 }, 1.9)
+    .to('.hero [data-reveal]', { autoAlpha: 1, y: 0, duration: 1, stagger: 0.12 }, 1.4);
+
+  // Parallax de salida del hero
+  gsap.to('.hero__stage', {
+    yPercent: 18, autoAlpha: 0.2, ease: 'none',
+    scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
+  });
+};
+
+/** Carretera de estelas de luz (Three.js) — GPU: instancias + shader, un solo uniform por frame. */
+const initHeroGL = () => {
+  if (!ENV.motion) return;
+  const host = $('.hero__bg');
+  const s = document.createElement('script');
+  s.src = THREE_URL; s.async = true;
+  s.onload = () => buildGL(host);
+  document.head.appendChild(s);
+};
+
+const buildGL = (host) => {
+  const T = window.THREE;
+  if (!T) return;
+  const touch = !ENV.fine;
+  const renderer = new T.WebGLRenderer({ antialias: !touch, alpha: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, touch ? 1 : 1.75));
+  host.appendChild(renderer.domElement);
+
+  const scene = new T.Scene();
+  const camera = new T.PerspectiveCamera(62, 1, 0.1, 400);
+  camera.position.set(0, 2.1, 6);
+
+  const LEN = 160;
+  const COUNT = touch ? 70 : 220;
+
+  const geo = new T.InstancedBufferGeometry();
+  const base = new T.PlaneBufferGeometry(1, 1, 1, 1);
+  base.rotateX(-Math.PI / 2);
+  geo.index = base.index;
+  geo.setAttribute('position', base.getAttribute('position'));
+  geo.instanceCount = COUNT;
+
+  const aOffset = new Float32Array(COUNT * 3);
+  const aMetrics = new Float32Array(COUNT * 3);
+  const aColor = new Float32Array(COUNT * 3);
+  const white = new T.Color('#dfe8ff'), blue = new T.Color('#6f9bff'), red = new T.Color('#ff2a2a'), amber = new T.Color('#ff7a2a');
+  for (let i = 0; i < COUNT; i++) {
+    const oncoming = i % 2 === 0;         // izquierda: faros de frente; derecha: pilotos
+    const lane = oncoming ? -rand(2.2, 5.6) : rand(1.6, 5.2);
+    aOffset.set([lane, rand(0.25, 0.6), rand(0, LEN)], i * 3);
+    aMetrics.set([rand(0.05, 0.12), rand(6, 22), oncoming ? rand(1.6, 2.4) : rand(0.5, 0.9)], i * 3);
+    const c = oncoming ? (Math.random() < 0.7 ? white : blue) : (Math.random() < 0.8 ? red : amber);
+    aColor.set([c.r, c.g, c.b], i * 3);
+  }
+  geo.setAttribute('aOffset', new T.InstancedBufferAttribute(aOffset, 3));
+  geo.setAttribute('aMetrics', new T.InstancedBufferAttribute(aMetrics, 3));
+  geo.setAttribute('aColor', new T.InstancedBufferAttribute(aColor, 3));
+
+  const uniforms = { uTravel: { value: 0 }, uLen: { value: LEN }, uTime: { value: 0 } };
+  const mat = new T.ShaderMaterial({
+    uniforms, transparent: true, depthWrite: false, blending: T.AdditiveBlending,
+    vertexShader: `
+      attribute vec3 aOffset; attribute vec3 aMetrics; attribute vec3 aColor;
+      uniform float uTravel; uniform float uLen; uniform float uTime;
+      varying vec3 vColor; varying float vAlong; varying float vFade;
+      void main(){
+        vec3 p = position;
+        vAlong = p.z + 0.5;              // 1 = cabeza (hacia cámara)
+        p.x *= aMetrics.x; p.z *= aMetrics.y;
+        float z = -uLen + mod(aOffset.z + uTravel * aMetrics.z, uLen);
+        p.z += z; p.x += aOffset.x; p.y += aOffset.y;
+        p.x += sin(z * 0.025 + uTime * 0.25) * 3.0 * smoothstep(0.0, -uLen, z); // curva suave
+        vFade = smoothstep(-uLen, -uLen * 0.7, z) * (1.0 - smoothstep(-4.0, 3.0, z));
+        vColor = aColor;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: `
+      varying vec3 vColor; varying float vAlong; varying float vFade;
+      void main(){
+        float a = pow(vAlong, 2.2) * vFade;
+        gl_FragColor = vec4(vColor * (0.6 + vAlong), a);
+      }`,
+  });
+  scene.add(new T.Mesh(geo, mat));
+
+  // Marcas viales discontinuas (misma lógica, geometría barata)
+  const dashes = new T.Group();
+  const dashMat = new T.MeshBasicMaterial({ color: 0x9fb4e6, transparent: true, opacity: 0.18 });
+  const dashGeo = new T.PlaneBufferGeometry(0.1, 2.6).rotateX(-Math.PI / 2);
+  const DASHES = 26;
+  for (let i = 0; i < DASHES; i++) {
+    const m = new T.Mesh(dashGeo, dashMat);
+    m.userData.z0 = (i / DASHES) * LEN;
+    dashes.add(m);
+  }
+  scene.add(dashes);
+
+  const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+  if (ENV.fine) {
+    addEventListener('pointermove', (e) => {
+      mouse.tx = (e.clientX / innerWidth) * 2 - 1;
+      mouse.ty = (e.clientY / innerHeight) * 2 - 1;
+    }, { passive: true });
+  }
+
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+  new ResizeObserver(resize).observe(host);
+
+  let visible = true, speed = 1, travel = 0, time = 0;
+  onVisible(host, (v) => (visible = v));
+
+  Ticker.add((dt) => {
+    if (!visible || document.hidden) return;
+    time += dt;
+    // Velocidad de scroll y acelerador empujan la escena
+    const boost = Math.min(Math.abs(Scroll.velocity) * 0.12, 5) + Engine.throttle * 2.5;
+    speed = damp(speed, 1 + boost, 3, dt);
+    travel += dt * 14 * speed;
+    uniforms.uTravel.value = travel;
+    uniforms.uTime.value = time;
+    dashes.children.forEach((m) => {
+      const z = -LEN + ((m.userData.z0 + travel) % LEN);
+      m.position.set(Math.sin(z * 0.025 + time * 0.25) * 3 * clamp(z / -LEN, 0, 1), 0.01, z);
+    });
+    mouse.x = damp(mouse.x, mouse.tx, 3, dt);
+    mouse.y = damp(mouse.y, mouse.ty, 3, dt);
+    camera.position.x = mouse.x * 1.2;
+    camera.position.y = 2.1 - mouse.y * 0.5;
+    camera.fov = 62 + (speed - 1) * 4;
+    camera.updateProjectionMatrix();
+    camera.lookAt(mouse.x * 2, 0.6, -40);
+    renderer.render(scene, camera);
+  });
+
+  gsap.from(renderer.domElement, { autoAlpha: 0, duration: 2, ease: 'power2.out' });
+};
+
+/* =========================================================================
+   10 · CABECERAS, REVEALS Y MÁSCARAS ENTRE SECCIONES
+   ========================================================================= */
+const initReveals = () => {
+  $$('[data-heading]').forEach(splitChars);
+  if (!ENV.motion) return;
+
+  $$('.section__head').forEach((head) => {
+    const chars = $$('.char', head);
+    const tl = gsap.timeline({ scrollTrigger: { trigger: head, start: 'top 82%' } });
+    tl.from($('.eyebrow__rule', head), { scaleX: 0, duration: 0.9, ease: 'expo.out' })
+      .from($('.eyebrow', head), { autoAlpha: 0, x: -12, duration: 0.6 }, 0)
+      .from(chars, { yPercent: 110, duration: 1, stagger: 0.028, ease: 'expo.out' }, 0.05);
+  });
+
+  $$('[data-reveal]').forEach((el) => {
+    if (el.closest('.hero')) return;
+    gsap.from(el, { autoAlpha: 0, y: 28, duration: 1.1, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%' } });
+  });
+
+  // Máscaras clip-path: los paneles se "abren" como una persiana al entrar
+  $$('[data-panel]').forEach((p) => {
+    gsap.fromTo(p,
+      { clipPath: 'inset(18% 10% 18% 10% round 28px)' },
+      { clipPath: 'inset(0% 0% 0% 0% round 14px)', ease: 'none',
+        scrollTrigger: { trigger: p, start: 'top 95%', end: 'top 55%', scrub: 0.6 } });
+  });
+
+  // Transición entre secciones: la sección entrante se desenmascara desde abajo
+  $$('.section.blueprint').forEach((s) => {
+    gsap.fromTo(s,
+      { clipPath: 'inset(8% 3% 0% 3% round 32px)' },
+      { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
+        scrollTrigger: { trigger: s, start: 'top bottom', end: 'top 35%', scrub: true } });
+  });
+};
+
+/* =========================================================================
+   11 · FICHA TÉCNICA: contadores + líneas de cota
+   ========================================================================= */
+const initSpecs = () => {
+  const grid = $('[data-specs]');
+  const svg = $('.cotas', grid);
+  const cards = $$('.spec', grid);
+  const NS = 'http://www.w3.org/2000/svg';
+  let paths = [];
+
+  const setCount = (el, v) => {
+    const d = +(el.dataset.decimals || 0);
+    el.textContent = el.hasAttribute('data-nogroup') ? String(Math.round(v)) : fmt(v, d);
+  };
+
+  // Dibuja las cotas desde cada tarjeta hasta su pieza (solo escritorio)
+  const layout = () => {
+    svg.innerHTML = '';
+    paths = [];
+    if (getComputedStyle(svg).display === 'none') return;
+    const g = grid.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${g.width} ${g.height}`);
+    cards.forEach((card) => {
+      const pt = $(`#${card.dataset.target} .pt`, grid);
+      if (!pt) return;
+      const c = card.getBoundingClientRect(), p = pt.getBoundingClientRect();
+      const left = card.dataset.side === 'l';
+      const sx = (left ? c.right : c.left) - g.left;
+      const sy = c.top + 22 - g.top;
+      const tx = p.left + p.width / 2 - g.left;
+      const ty = p.top + p.height / 2 - g.top;
+      const elbow = sx + (left ? 1 : -1) * Math.min(40, Math.abs(tx - sx) * 0.3);
+      const path = document.createElementNS(NS, 'path');
+      path.setAttribute('class', 'cota');
+      path.setAttribute('d', `M${sx} ${sy - 6} V${sy + 6} M${sx} ${sy} H${elbow} L${tx} ${ty}`);
+      const end = document.createElementNS(NS, 'circle');
+      end.setAttribute('class', 'cota-end');
+      end.setAttribute('cx', tx); end.setAttribute('cy', ty); end.setAttribute('r', 2.5);
+      svg.append(path, end);
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = grid.dataset.drawn ? 0 : len;
+      end.style.opacity = grid.dataset.drawn ? 1 : 0;
+      paths.push({ path, end, card });
+    });
+  };
+
+  const play = () => {
+    grid.dataset.drawn = '1';
+    $$('[data-count]', grid).forEach((el, i) => {
+      const to = parseFloat(el.dataset.count);
+      const from = parseFloat(el.dataset.from || 0);
+      if (!ENV.motion) return setCount(el, to);
+      const o = { v: from };
+      gsap.to(o, { v: to, duration: 1.8, delay: i * 0.12, ease: 'expo.out', onUpdate: () => setCount(el, o.v) });
+    });
+    if (!ENV.motion) return;
+    gsap.to(cards, { autoAlpha: 1, y: 0, duration: 1, stagger: 0.1, ease: 'expo.out' });
+    paths.forEach(({ path, end }, i) => {
+      gsap.to(path, { strokeDashoffset: 0, duration: 1.2, delay: 0.3 + i * 0.12, ease: 'power3.inOut' });
+      gsap.to(end, { opacity: 1, duration: 0.3, delay: 1.3 + i * 0.12 });
+    });
+  };
+
+  // Estado inicial y disparo
+  if (ENV.motion) {
+    $$('[data-count]', grid).forEach((el) => setCount(el, parseFloat(el.dataset.from || 0)));
+    gsap.set(cards, { autoAlpha: 0, y: 24 });
+  }
+  layout();
+  let rT;
+  addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(layout, 150); });
+  if (ENV.motion) {
+    ScrollTrigger.create({ trigger: grid, start: 'top 70%', once: true, onEnter: play });
+    ScrollTrigger.addEventListener('refresh', layout);
+  } else play();
+};
+
+/* =========================================================================
+   12 · CUADRO DE MANDOS (SVG generado)
+   ========================================================================= */
+const Gauges = (() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const A0 = -125, A1 = 125; // arco total 250°
+  const el = (tag, attrs, parent) => {
+    const n = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  const polar = (r, deg) => {
+    const a = (deg - 90) * Math.PI / 180;
+    return [100 + r * Math.cos(a), 100 + r * Math.sin(a)];
+  };
+
+  const build = (svg, o) => {
+    const ang = (v) => A0 + ((v - o.min) / (o.max - o.min)) * (A1 - A0);
+    el('circle', { class: 'g-face', cx: 100, cy: 100, r: 94 }, svg);
+    el('circle', { class: 'g-glow', cx: 100, cy: 100, r: 94 }, svg);
+    el('circle', { class: 'g-ring', cx: 100, cy: 100, r: 95 }, svg);
+    if (o.red != null) {
+      const [x0, y0] = polar(84, ang(o.red)), [x1, y1] = polar(84, A1);
+      el('path', { class: 'g-red', d: `M${x0} ${y0} A84 84 0 0 1 ${x1} ${y1}` }, svg);
+    }
+    for (let v = o.min; v <= o.max + 1e-6; v += o.minor) {
+      const major = Math.abs((v - o.min) % o.major) < 1e-6 || Math.abs(((v - o.min) % o.major) - o.major) < 1e-6;
+      const [x0, y0] = polar(88, ang(v)), [x1, y1] = polar(major ? 76 : 82, ang(v));
+      el('line', { class: `g-tick${major ? ' g-tick--major' : ''}`, x1: x0, y1: y0, x2: x1, y2: y1 }, svg);
+      if (major && (!o.labelStep || Math.abs((v - o.min) % o.labelStep) < 1e-6)) {
+        const [tx, ty] = polar(64, ang(v));
+        el('text', { class: 'g-num', x: tx, y: ty }, svg).textContent = o.label(v);
+      }
+    }
+    el('text', { class: 'g-unit', x: 100, y: 138 }, svg).textContent = o.unit;
+    const read = el('text', { class: 'g-read', x: 100, y: 160 }, svg);
+    const needle = el('g', {}, svg);
+    el('path', { class: 'g-needle', d: 'M98.2 108 L99.3 22 L100.7 22 L101.8 108 Z' }, needle);
+    el('circle', { class: 'g-cap', cx: 100, cy: 100, r: 9 }, svg);
+    return {
+      set(v, text) {
+        needle.setAttribute('transform', `rotate(${ang(clamp(v, o.min, o.max * 1.02)).toFixed(2)} 100 100)`);
+        if (text != null) read.textContent = text;
+      },
+    };
+  };
+
+  const init = () => {
+    const root = $('[data-cluster]');
+    const rpmG = build($('[data-gauge="rpm"]'), { min: 0, max: 5000, major: 1000, minor: 250, red: 4500, unit: 'x1000 RPM', label: (v) => v / 1000 });
+    const spdG = build($('[data-gauge="speed"]'), { min: 0, max: 220, major: 20, minor: 10, labelStep: 40, unit: 'KM/H', label: (v) => v });
+    const tells = $$('.tell', root);
+    const lcd = {
+      gear: $('[data-lcd="gear"]', root), speed: $('[data-lcd="speed"]', root),
+      coolant: $('[data-lcd="coolant"]', root), bar: $('[data-lcd-bar="coolant"]', root),
+    };
+    const sweep = { active: false, rpm: 0, spd: 0 };
+    let visible = false;
+
+    // Estado: contacto quitado
+    const setOffTells = () => tells.forEach((t, i) => t.classList.toggle('is-on', i < 2));
+    setOffTells();
+    rpmG.set(0, '0'); spdG.set(0, '0');
+
+    const ignition = () => {
+      if (!ENV.gsap) { Engine.start(); return; }
+      sweep.active = true;
+      root.classList.add('is-lit');
+      tells.forEach((t) => t.classList.add('is-on'));
+      const tl = gsap.timeline({ onComplete: () => { sweep.active = false; if (Engine.state === 'off') Engine.start(); } });
+      if (ENV.reduced) {
+        tl.add(() => tells.forEach((t) => t.classList.remove('is-on')), 0.3);
+        return;
+      }
+      tl.fromTo(sweep, { rpm: 0, spd: 0 }, { rpm: 5000, spd: 220, duration: 0.85, ease: 'power2.inOut' })
+        .to(sweep, { rpm: 0, spd: 0, duration: 0.9, ease: 'power2.inOut' })
+        .add(() => tells.filter((t) => !t.hasAttribute('data-glow')).forEach((t, i) => setTimeout(() => t.classList.remove('is-on'), i * 90)), 0.6)
+        .add(() => $('[data-glow]', root).classList.remove('is-on'), 1.9);
+    };
+
+    // Repetir contacto: apaga y vuelve a arrancar
+    $('[data-ignition]').addEventListener('click', () => { Engine.state = 'off'; Engine.rpm = 0; setTimeout(ignition, 250); });
+
+    if (ENV.gsap) {
+      ScrollTrigger.create({ trigger: root, start: 'top 65%', once: true, onEnter: ignition });
+    } else ignition();
+    onVisible(root, (v) => (visible = v), '100px');
+
+    Ticker.add(() => {
+      if (!visible) return;
+      if (sweep.active) {
+        rpmG.set(sweep.rpm, fmt(sweep.rpm)); spdG.set(sweep.spd, fmt(sweep.spd));
+      } else {
+        rpmG.set(Engine.rpm, fmt(Math.round(Engine.rpm / 10) * 10));
+        spdG.set(Engine.speed, fmt(Engine.speed));
+      }
+      lcd.gear.textContent = Engine.gear;
+      lcd.speed.textContent = Math.round(Engine.speed);
+      lcd.coolant.textContent = Engine.state === 'off' ? '--°C' : `${Math.round(Engine.coolant)}°C`;
+      lcd.bar.style.transform = `scaleX(${clamp((Engine.coolant - 40) / 70, 0, 1).toFixed(3)})`;
+      // Testigos de batería/aceite si el motor se para
+      if (!sweep.active && Engine.state === 'running') { tells[0].classList.remove('is-on'); tells[1].classList.remove('is-on'); }
+    });
+  };
+  return { init };
+})();
+
+/* =========================================================================
+   13 · TELEMETRÍA (canvas, flujo continuo)
+   ========================================================================= */
+const initTelemetry = () => {
+  const root = $('[data-telemetry]');
+  const css = getComputedStyle(document.documentElement);
+  const glow = css.getPropertyValue('--c-ford-glow').trim() || '#7aa2ff';
+  const defs = {
+    coolant: { min: 40, max: 110, get: () => Engine.coolant, d: 0, color: '#ffb020' },
+    boost: { min: 0, max: 1.4, get: () => Engine.boost, d: 2, color: glow },
+    rpm: { min: 0, max: 5000, get: () => Engine.rpm, d: 0, color: '#ff5a4a' },
+    volt: { min: 11.5, max: 15, get: () => Engine.volt, d: 2, color: '#3ddc84' },
+  };
+  const N = 90, STEP = 1 / 20; // 20 muestras/s, desplazamiento interpolado entre muestras
+  const graphs = Object.entries(defs).map(([k, d]) => {
+    const canvas = $(`[data-graph="${k}"]`, root);
+    return { k, ...d, canvas, ctx: canvas.getContext('2d'), buf: new Array(N).fill(d.get()), out: $(`[data-t="${k}"]`, root), w: 0, h: 0 };
+  });
+
+  const size = () => graphs.forEach((g) => {
+    const r = g.canvas.getBoundingClientRect();
+    const dpr = Math.min(devicePixelRatio, 2);
+    g.w = r.width; g.h = r.height;
+    g.canvas.width = Math.round(r.width * dpr); g.canvas.height = Math.round(r.height * dpr);
+    g.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  });
+  size();
+  new ResizeObserver(size).observe(root);
+
+  const draw = (g, frac) => {
+    const { ctx, w, h, buf } = g;
+    ctx.clearRect(0, 0, w, h);
+    // Rejilla
+    ctx.strokeStyle = 'rgba(170,190,255,.08)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < 4; i++) { const y = Math.round((h / 4) * i) + 0.5; ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.stroke();
+    const dx = w / (N - 2);
+    const y = (v) => h - 4 - ((clamp(v, g.min, g.max) - g.min) / (g.max - g.min)) * (h - 8);
+    const x = (i) => (i - frac) * dx;
+    // Trazo
+    ctx.beginPath();
+    ctx.moveTo(x(0), y(buf[0]));
+    for (let i = 1; i < N; i++) {
+      const xm = (x(i - 1) + x(i)) / 2;
+      ctx.quadraticCurveTo(x(i - 1), y(buf[i - 1]), xm, (y(buf[i - 1]) + y(buf[i])) / 2);
+    }
+    ctx.lineTo(x(N - 1), y(buf[N - 1]));
+    ctx.strokeStyle = g.color; ctx.lineWidth = 1.6; ctx.stroke();
+    // Relleno degradado
+    ctx.lineTo(x(N - 1), h); ctx.lineTo(x(0), h); ctx.closePath();
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, g.color + '55'); grad.addColorStop(1, g.color + '00');
+    ctx.fillStyle = grad; ctx.fill();
+    // Punto actual
+    const lx = x(N - 1), ly = y(buf[N - 1]);
+    ctx.fillStyle = g.color; ctx.shadowColor = g.color; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(lx, ly, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+  };
+
+  let visible = false, acc = 0, textAcc = 0;
+  const rate = ENV.reduced ? 0.5 : 0; // con movimiento reducido: actualizaciones espaciadas, sin flujo
+  onVisible(root, (v) => {
+    visible = v;
+    Engine.auto = v;
+    if (v && Engine.state === 'off') Engine.start();
+  }, '50px');
+
+  Ticker.add((dt) => {
+    if (!visible) return;
+    acc += dt; textAcc += dt;
+    const step = ENV.reduced ? rate : STEP;
+    while (acc >= step) {
+      acc -= step;
+      graphs.forEach((g) => { g.buf.push(g.get()); g.buf.shift(); });
+    }
+    if (textAcc > 0.1) {
+      textAcc = 0;
+      graphs.forEach((g) => { g.out.textContent = Engine.state === 'off' ? '--' : fmt(g.get(), g.d); });
+    }
+    const frac = ENV.reduced ? 0 : acc / step;
+    graphs.forEach((g) => draw(g, frac));
+  });
+};
+
+/* =========================================================================
+   14 · DESPIECE (pin + scrub: separar → mantener → volver a unir)
+   ========================================================================= */
+const initExplode = () => {
+  const stage = $('[data-explode]');
+  const part = (n) => $(`[data-part="${n}"]`, stage);
+  const labels = $$('.xp-label', stage);
+  const bar = $('[data-xp-bar]');
+  const out = $('[data-xp-out]');
+  const svg = $('svg', stage);
+
+  // Proyecta las etiquetas (coordenadas SVG) a píxeles del escenario: robusto a cualquier tamaño
+  const placeLabels = () => {
+    const m = svg.getScreenCTM();
+    if (!m) return;
+    const r = stage.getBoundingClientRect();
+    const pt = svg.createSVGPoint();
+    labels.forEach((l) => {
+      pt.x = +l.dataset.x; pt.y = +l.dataset.y;
+      const p = pt.matrixTransform(m);
+      l.style.left = `${(p.x - r.left).toFixed(1)}px`;
+      l.style.top = `${(p.y - r.top).toFixed(1)}px`;
+    });
+  };
+  placeLabels();
+  new ResizeObserver(placeLabels).observe(stage);
+
+  // Desplazamientos en unidades del viewBox (SVG escala con el contenedor)
+  const moves = {
+    body: { y: -210 },
+    engine: { x: -70, y: 30 },
+    turbo: { x: 120, y: -40 },
+    susp: { y: -20, x: 0 },
+    brakes: { y: 70 },
+    'wheel-f': { x: -130, y: 110 },
+    'wheel-r': { x: 130, y: 110 },
+  };
+
+  const setAt = (p) => { // p: 0 montado → 1 despiece (para reduced/static)
+    Object.entries(moves).forEach(([n, m]) => window.gsap?.set(part(n), { x: (m.x || 0) * p, y: (m.y || 0) * p }));
+  };
+
+  if (!ENV.motion) {
+    if (ENV.gsap) { setAt(1); gsap.set('.xp-leads', { opacity: 1 }); }
+    out.textContent = '0%';
+    return;
+  }
+
+  // GSAP gestiona el centrado con porcentajes para no pisar el transform del CSS
+  gsap.set(labels, { x: 0, y: 0, xPercent: -50, yPercent: -100 });
+  const tl = gsap.timeline({ defaults: { ease: 'power2.inOut', duration: 1 } });
+  tl.addLabel('open');
+  Object.entries(moves).forEach(([n, m], i) => tl.to(part(n), { ...m }, `open+=${i * 0.08}`));
+  tl.to('.xp-leads', { opacity: 1, duration: 0.4 }, 'open+=0.6')
+    .fromTo(labels, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.4 }, 'open+=0.7')
+    .to({}, { duration: 0.8 }) // mantener
+    .addLabel('close')
+    .to(labels, { autoAlpha: 0, y: -8, stagger: 0.04, duration: 0.3 }, 'close')
+    .to('.xp-leads', { opacity: 0, duration: 0.3 }, 'close')
+    .to(Object.keys(moves).map(part), { x: 0, y: 0, stagger: 0.05, duration: 1 }, 'close+=0.2');
+
+  ScrollTrigger.create({
+    trigger: '.explode',
+    start: 'top top',
+    end: () => `+=${innerHeight * 2.6}`,
+    pin: '.explode__pin',
+    scrub: 0.8,
+    animation: tl,
+    invalidateOnRefresh: true,
+    onUpdate: (st) => {
+      // Ensamblaje: 100% → 0% (mitad) → 100%
+      const p = st.progress;
+      const assembled = Math.abs(p - 0.5) * 2;
+      out.textContent = `${Math.round(assembled * 100)}%`;
+      bar.style.transform = `scaleX(${p.toFixed(3)})`;
+    },
+  });
+};
+
+/* =========================================================================
+   15 · GALERÍA (scroll horizontal pineado + arrastre + reflejo)
+   ========================================================================= */
+const initGallery = () => {
+  const section = $('.gallery');
+  const track = $('.gallery__track', section);
+  const bar = $('[data-gal-bar]');
+  const shots = $$('.shot', section);
+
+  // Reflejo de luz que sigue al puntero + ligera inclinación 3D
+  if (ENV.fine && ENV.motion) {
+    shots.forEach((s) => {
+      const frame = $('.shot__frame', s), glare = $('.shot__glare', s), img = $('img', s);
+      const rX = gsap.quickTo(frame, 'rotationX', { duration: 0.6, ease: 'power3' });
+      const rY = gsap.quickTo(frame, 'rotationY', { duration: 0.6, ease: 'power3' });
+      const gx = gsap.quickTo(glare, 'xPercent', { duration: 0.4, ease: 'power3' });
+      const gy = gsap.quickTo(glare, 'yPercent', { duration: 0.4, ease: 'power3' });
+      s.addEventListener('pointermove', (e) => {
+        const r = frame.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+        rY((px - 0.5) * 10); rX((0.5 - py) * 8);
+        gx(px * 166 + 33); gy(py * 166 + 33);
+      });
+      s.addEventListener('pointerleave', () => { rX(0); rY(0); });
+      if (img) gsap.set(img, { scale: 1.12 });
+    });
+  }
+
+  if (!ENV.motion) { section.classList.add('is-static'); return; }
+
+  const dist = () => Math.max(0, track.scrollWidth - innerWidth);
+  const st = ScrollTrigger.create({
+    trigger: section,
+    start: 'top top',
+    end: () => `+=${dist()}`,
+    pin: '.gallery__pin',
+    scrub: 0.7,
+    invalidateOnRefresh: true,
+    animation: gsap.to(track, { x: () => -dist(), ease: 'none' }),
+    onUpdate: (self) => { bar.style.transform = `scaleX(${self.progress.toFixed(3)})`; },
+  });
+
+  // Parallax interno de cada foto según la posición horizontal
+  shots.forEach((s) => {
+    const img = $('img', s) || $('.media__ph svg', s);
+    gsap.fromTo(img, { xPercent: -6 }, {
+      xPercent: 6, ease: 'none',
+      scrollTrigger: { trigger: s, containerAnimation: st.animation, start: 'left right', end: 'right left', scrub: true },
+    });
+  });
+
+  // Arrastrar = desplazar (se traduce a scroll vertical para mantener un único estado)
+  let down = false, startX = 0, startScroll = 0;
+  track.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse') return; // en táctil, el scroll nativo ya hace el trabajo
+    down = true; startX = e.clientX; startScroll = window.scrollY;
+    track.setPointerCapture(e.pointerId);
+  });
+  track.addEventListener('pointermove', (e) => {
+    if (!down) return;
+    const target = clamp(startScroll - (e.clientX - startX) * 1.4, st.start, st.end);
+    lenis ? lenis.scrollTo(target, { immediate: false, lerp: 0.2 }) : window.scrollTo(0, target);
+  });
+  const up = () => { down = false; };
+  track.addEventListener('pointerup', up);
+  track.addEventListener('pointercancel', up);
+  track.addEventListener('dragstart', (e) => e.preventDefault());
+};
+
+/* =========================================================================
+   16 · HISTORIAL: carretera que se dibuja + marcas viales que avanzan
+   ========================================================================= */
+const initHistory = () => {
+  const root = $('[data-history]');
+  const asphalt = $('.road__asphalt', root);
+  const marks = $('.road__marks', root);
+  const car = $('.road__car', root);
+  const items = $$('.milestone', root);
+
+  if (!ENV.motion) {
+    asphalt.style.clipPath = 'none';
+    car.style.display = 'none';
+    items.forEach((i) => i.classList.add('is-active'));
+    return;
+  }
+
+  const setMarks = gsap.quickSetter(marks, 'y', 'px');
+  const setCar = gsap.quickSetter(car, 'y', 'px');
+  ScrollTrigger.create({
+    trigger: root, start: 'top 60%', end: 'bottom 60%', scrub: true,
+    onUpdate: (st) => {
+      const h = root.offsetHeight, p = st.progress;
+      asphalt.style.clipPath = `inset(0 0 ${((1 - p) * 100).toFixed(2)}% 0)`;
+      setCar(Math.max(0, p * h - 46));
+      setMarks((p * h * 1.6) % 60); // periodo de la marca discontinua = 60px
+    },
+  });
+
+  items.forEach((it, i) => {
+    const card = $('.milestone__card', it);
+    ScrollTrigger.create({
+      trigger: it, start: 'top 60%',
+      onEnter: () => it.classList.add('is-active'),
+      onLeaveBack: () => it.classList.remove('is-active'),
+    });
+    const fromLeft = matchMedia('(min-width: 900px)').matches && i % 2 === 0;
+    gsap.fromTo(card,
+      { clipPath: fromLeft ? 'inset(0 0 0 100% round 14px)' : 'inset(0 100% 0 0 round 14px)', x: fromLeft ? 30 : -30 },
+      { clipPath: 'inset(0 0% 0 0% round 14px)', x: 0, duration: 1.2, ease: 'expo.out',
+        scrollTrigger: { trigger: it, start: 'top 75%' } });
+  });
+};
+
+/* =========================================================================
+   17 · CIERRE: texto magnético + matrícula con inclinación
+   ========================================================================= */
+const initOutro = () => {
+  const section = $('[data-outro]');
+  const chars = $$('[data-magnetic-text]', section).flatMap(splitChars);
+  const plate = $('.plate', section);
+  if (!ENV.motion) return;
+
+  gsap.from(chars, {
+    yPercent: 60, autoAlpha: 0, rotationX: -70, transformOrigin: '50% 100%', stagger: 0.035, duration: 1.1, ease: 'expo.out',
+    scrollTrigger: { trigger: section, start: 'top 65%' },
+  });
+  gsap.from(plate, { y: 40, autoAlpha: 0, rotationX: 40, duration: 1.2, ease: 'expo.out', scrollTrigger: { trigger: plate, start: 'top 90%' } });
+
+  if (!ENV.fine) return;
+  const R = 220; // radio de influencia (px)
+  const setters = chars.map((c) => ({
+    el: c,
+    x: gsap.quickTo(c, 'x', { duration: 0.8, ease: 'power3' }),
+    y: gsap.quickTo(c, 'y', { duration: 0.8, ease: 'power3' }),
+    cx: 0, cy: 0,
+  }));
+  const measure = () => setters.forEach((s) => {
+    const r = s.el.getBoundingClientRect();
+    s.cx = r.left + r.width / 2 - gsap.getProperty(s.el, 'x');
+    s.cy = r.top + r.height / 2 + window.scrollY - gsap.getProperty(s.el, 'y');
+  });
+  const pRX = gsap.quickTo(plate, 'rotationX', { duration: 0.8, ease: 'power3' });
+  const pRY = gsap.quickTo(plate, 'rotationY', { duration: 0.8, ease: 'power3' });
+
+  section.addEventListener('pointerenter', measure);
+  addEventListener('resize', measure);
+  section.addEventListener('pointermove', (e) => {
+    const py = e.clientY + window.scrollY;
+    setters.forEach((s) => {
+      const dx = e.clientX - s.cx, dy = py - s.cy, d = Math.hypot(dx, dy);
+      const f = d < R ? (1 - d / R) ** 2 : 0;
+      s.x(dx * f * 0.45); s.y(dy * f * 0.45);
+    });
+    pRY((e.clientX / innerWidth - 0.5) * 24);
+    pRX((0.5 - e.clientY / innerHeight) * 16);
+  });
+  section.addEventListener('pointerleave', () => { setters.forEach((s) => { s.x(0); s.y(0); }); pRX(0); pRY(0); });
+};
+
+/* =========================================================================
+   18 · ARRANQUE
+   ========================================================================= */
+const boot = async () => {
+  const y = $('[data-year]'); if (y) y.textContent = new Date().getFullYear();
+  initMedia();
+  initSmoothScroll();
+  initThrottle();
+  Sound.init();
+  initNav();
+  prepHero();
+  initReveals();
+  initSpecs();
+  Gauges.init();
+  initTelemetry();
+  initExplode();
+  initGallery();
+  initHistory();
+  initOutro();
+  initCursor();
+  initMagnetic();
+  initHeroGL();
+
+  await runLoader();
+  if (lenis) lenis.start();
+  if (ENV.gsap) ScrollTrigger.refresh();
+  playHero();
+};
+
+// Si el usuario activa "reducir movimiento" en caliente, recargamos a la versión ligera
+mqReduce.addEventListener?.('change', () => location.reload());
+
+boot();
+})();
+</script>
+</body>
+</html>
