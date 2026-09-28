@@ -55,7 +55,7 @@ export function Header() {
       <header
         ref={headerRef}
         className={cn(
-          'sticky top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-300',
+          'sticky top-[env(safe-area-inset-top,0px)] z-50 border-b transition-[background-color,border-color,box-shadow] duration-300',
           scrolled || menuOpen ? 'border-line bg-canvas/85 shadow-soft backdrop-blur-lg' : 'border-transparent bg-canvas/0',
         )}
         onBlur={(event) => {

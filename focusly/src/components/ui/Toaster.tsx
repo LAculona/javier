@@ -65,7 +65,7 @@ export function Toaster() {
   return (
     <section
       aria-label="Notificaciones"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 sm:justify-end sm:p-6"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:justify-end sm:p-6"
     >
       <ol aria-live="polite" aria-relevant="additions" className="flex w-full max-w-sm flex-col gap-2">
         {toasts.map((toast) => (

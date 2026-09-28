@@ -8,7 +8,11 @@ export function scrollToSection(id: string): void {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   element.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   if (window.location.hash !== `#${id}`) {
-    window.history.pushState(null, '', `#${id}`);
+    try {
+      window.history.pushState(null, '', `#${id}`);
+    } catch {
+      /* algunos entornos embebidos (iframes aislados) no permiten modificar el historial */
+    }
   }
   if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1');
   element.focus({ preventScroll: true });
