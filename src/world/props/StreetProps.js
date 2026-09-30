@@ -43,7 +43,7 @@ function assemble(parts) {
 
 function makeChainLinkMaterial() {
   const c = makeCanvas(128, 128);
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   g.clearRect(0, 0, 128, 128);
   g.strokeStyle = '#ffffff';
   g.lineWidth = 5;

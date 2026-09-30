@@ -29,7 +29,8 @@ export class Solid {
     this.top = this.cy + this.hy;
     this.floor = o.floor !== undefined ? o.floor : false; // cuenta como territorio
     this.walkable = o.walkable !== undefined ? o.walkable : true; // se puede estar encima
-    this.paintable = o.paintable !== undefined ? o.paintable : true;
+    this.paintable = o.paintable !== undefined ? o.paintable : true; // caras en el atlas
+    this.groundPaint = o.groundPaint !== undefined ? o.groundPaint : true; // cara superior pintable
     this.blocksProjectiles = o.blocksProjectiles !== undefined ? o.blocksProjectiles : true;
     this.blocksCamera = o.blocksCamera !== undefined ? o.blocksCamera : true;
     this.blocksMovement = o.blocksMovement !== undefined ? o.blocksMovement : true;

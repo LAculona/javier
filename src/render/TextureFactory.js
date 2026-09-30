@@ -330,7 +330,7 @@ export function makeCanvas(w, h) {
 /** Toldo a rayas (tileable en u). */
 export function makeStripeTexture(colA, colB, stripes = 8, size = 256) {
   const c = makeCanvas(size, size);
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   const w = size / stripes;
   for (let i = 0; i < stripes; i++) {
     g.fillStyle = i % 2 ? colB : colA;
@@ -352,8 +352,8 @@ export function makeWindowTextures(cols = 4, rows = 3, seed = 5, opts = {}) {
   const H = 512;
   const c = makeCanvas(W, H);
   const e = makeCanvas(W, H);
-  const g = c.getContext('2d');
-  const ge = e.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
+  const ge = e.getContext('2d', { willReadFrequently: true });
   const rand = rng(seed);
   g.fillStyle = opts.wall || '#e9dcc5';
   g.fillRect(0, 0, W, H);
@@ -427,7 +427,7 @@ export function makeWindowTextures(cols = 4, rows = 3, seed = 5, opts = {}) {
 /** Gradiente radial suave (para sombras de contacto, halos, partículas). */
 export function makeRadialTexture(size = 128, inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)') {
   const c = makeCanvas(size, size);
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   grad.addColorStop(0, inner);
   grad.addColorStop(1, outer);

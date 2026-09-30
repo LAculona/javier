@@ -12,7 +12,7 @@ export class Lighting {
     this.scene = scene;
     this.sunDir = (opts.sunDir || new THREE.Vector3(-0.62, 0.52, -0.42)).clone().normalize();
 
-    this.sun = new THREE.DirectionalLight(opts.sunColor || 0xffe0b8, opts.sunIntensity || 2.15);
+    this.sun = new THREE.DirectionalLight(opts.sunColor || 0xffe0b8, opts.sunIntensity || 1.8);
     this.sun.name = 'sun';
     this.sun.castShadow = true;
     this.sun.shadow.bias = -0.0004;
@@ -23,7 +23,7 @@ export class Lighting {
     scene.add(this.sun);
     scene.add(this.sun.target);
 
-    this.hemi = new THREE.HemisphereLight(opts.skyColor || 0xa9c8ff, opts.groundColor || 0xd9b99a, opts.hemiIntensity || 0.46);
+    this.hemi = new THREE.HemisphereLight(opts.skyColor || 0xa9c8ff, opts.groundColor || 0xd9b99a, opts.hemiIntensity || 0.4);
     this.hemi.name = 'skyfill';
     scene.add(this.hemi);
 

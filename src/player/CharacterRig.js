@@ -236,7 +236,7 @@ void main() {
 }
 `;
 
-function createLiquidMaterial(color) {
+export function createLiquidMaterial(color) {
   const c = new THREE.Color(color);
   return new THREE.ShaderMaterial({
     vertexShader: LIQUID_VERT,

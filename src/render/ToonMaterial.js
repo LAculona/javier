@@ -32,9 +32,9 @@ export const sharedUniforms = {
   uPaintAtlas: { value: null },
   uAtlasMeters: { value: 200 },
   uDryTime: { value: 3.6 },
-  uPaintBump: { value: 0.03 },
-  uPaintGlow: { value: 0.05 },
-  uFreshGlow: { value: 0.55 },
+  uPaintBump: { value: 0.07 },
+  uPaintGlow: { value: 0.0 },
+  uFreshGlow: { value: 0.22 },
   uShadowTint: { value: new THREE.Color(0x8f86c8) },
   uOverlayTex: { value: null },
   uWetTex: { value: null },
@@ -88,15 +88,15 @@ struct InkPaint {
 };
 
 float inkHeight( float v, vec2 m, float fresh ) {
-  float h = smoothstep( 0.36, 0.72, v );
-  float rip = sin( m.x * 6.3 + m.y * 2.1 + uInkTime * 5.5 ) * sin( m.y * 5.1 - m.x * 2.7 - uInkTime * 4.1 );
-  return h + rip * fresh * 0.22 * h;
+  float h = smoothstep( 0.44, 0.66, v );
+  float rip = sin( m.x * 9.3 + m.y * 3.1 + uInkTime * 5.5 ) * sin( m.y * 7.1 - m.x * 3.7 - uInkTime * 4.1 );
+  return h + rip * fresh * 0.035 * h;
 }
 
 float inkField( sampler2D tex, vec2 uv, float mScale, out vec4 s, out vec2 m ) {
   s = texture2D( tex, uv );
   m = uv * mScale;
-  float n = texture2D( uNoiseTex, m * 0.19 ).g * 0.7 + texture2D( uNoiseTex, m * 0.61 ).b * 0.3;
+  float n = texture2D( uNoiseTex, m * 0.17 ).g * 0.82 + texture2D( uNoiseTex, m * 0.55 ).b * 0.18;
   return s.r + s.g + ( n - 0.5 ) * 0.36;
 }
 
@@ -280,7 +280,7 @@ float inkWet = 0.0;
 
 const FRAG_ROUGH = /* glsl */ `
 roughnessFactor = mix( roughnessFactor, 0.07, inkWet );
-roughnessFactor = mix( roughnessFactor, mix( 0.3, 0.07, inkFresh ), inkMask );
+roughnessFactor = mix( roughnessFactor, mix( 0.2, 0.06, inkFresh ), inkMask );
 `;
 
 const FRAG_METAL = /* glsl */ `
@@ -302,7 +302,23 @@ if ( inkMask > 0.001 ) {
 
 const FRAG_EMISSIVE = /* glsl */ `
 #if defined( INK_PAINT_GROUND ) || defined( INK_PAINT_ATLAS )
+if ( inkMask > 0.001 ) {
+  // relieve "emboss" en pantalla: brillo fino en el borde superior de cada
+  // mancha y sombra en el inferior (lectura de líquido espeso)
+  float inkEmb = -inkDH.y * 5.0 + inkDH.x * 1.5;
+  float inkHi = smoothstep( 0.12, 0.45, inkEmb );
+  float inkLo = smoothstep( 0.12, 0.45, -inkEmb );
+  diffuseColor.rgb *= 1.0 - inkLo * 0.38 * inkMask;
+  // destello del sol y de una luz clave ligada a la cámara, umbralizados
+  vec3 inkV = normalize( vViewPosition );
+  vec3 inkSunV = normalize( ( viewMatrix * vec4( uSunDirW, 0.0 ) ).xyz );
+  float inkS2 = pow( max( dot( normal, normalize( inkSunV + inkV ) ), 0.0 ), 160.0 );
+  float inkS = pow( max( dot( normal, normalize( vec3( 0.25, 0.9, 0.35 ) + inkV ) ), 0.0 ), 90.0 );
+  float inkWetK = mix( 0.55, 1.0, inkFresh );
+  float inkHL = inkHi * 0.85 + ( smoothstep( 0.55, 0.7, inkS2 ) * 0.7 + smoothstep( 0.7, 0.8, inkS ) * 0.2 * inkFresh ) * inkWetK;
+  totalEmissiveRadiance += vec3( 1.0, 0.97, 0.93 ) * inkHL * inkMask;
   totalEmissiveRadiance += inkCol * inkMask * ( uPaintGlow + inkFresh * uFreshGlow );
+}
 #endif
 `;
 
@@ -315,6 +331,13 @@ vec3 inkRim = vec3( 0.0 );
   float sunSide = 0.45 + 0.55 * saturate( dot( inkWN, uSunDirW ) * 0.5 + 0.5 );
   inkRim = uRimColor * smoothstep( 0.25, 0.75, fr ) * uRimStrength * sunSide;
 }
+#endif
+`;
+
+const FRAG_LIGHTS_END = /* glsl */ `
+#if defined( INK_PAINT_GROUND ) || defined( INK_PAINT_ATLAS )
+  // el color de equipo manda: el reflejo del cielo se atenúa sobre la pintura
+  reflectedLight.indirectSpecular *= 1.0 - inkMask * ( 0.75 - inkFresh * 0.25 );
 #endif
 `;
 
@@ -352,6 +375,7 @@ export function applyToonPatch(shader, mat) {
     .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n' + FRAG_NORMAL_BEGIN)
     .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + FRAG_NORMAL)
     .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + FRAG_EMISSIVE)
+    .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + FRAG_LIGHTS_END)
     .replace(
       'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
       FRAG_RIM +

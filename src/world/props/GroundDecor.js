@@ -15,12 +15,12 @@ export class GroundDecor {
     this.w = Math.round((bounds.maxX - bounds.minX) * ppm);
     this.h = Math.round((bounds.maxZ - bounds.minZ) * ppm);
     this.canvas = makeCanvas(this.w, this.h);
-    this.g = this.canvas.getContext('2d');
+    this.g = this.canvas.getContext('2d', { willReadFrequently: true });
     this.g.clearRect(0, 0, this.w, this.h);
     const wetPpm = 4;
     this.wetScale = wetPpm / ppm;
     this.wetCanvas = makeCanvas(Math.round(this.w * this.wetScale), Math.round(this.h * this.wetScale));
-    this.wg = this.wetCanvas.getContext('2d');
+    this.wg = this.wetCanvas.getContext('2d', { willReadFrequently: true });
     this.wg.fillStyle = '#000';
     this.wg.fillRect(0, 0, this.wetCanvas.width, this.wetCanvas.height);
     this.rand = rng(seed);

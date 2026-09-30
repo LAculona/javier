@@ -266,6 +266,7 @@ export function walkway(b, x0, z0, x1, z1, y, width = 1.6) {
     rot,
     floor: false,
     paintable: false,
+    groundPaint: false,
     tag: 'walkway'
   });
   b.later(() => {

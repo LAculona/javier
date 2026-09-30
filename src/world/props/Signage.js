@@ -504,7 +504,7 @@ const LAYOUT = {
 
 export function makeSignAtlas() {
   const c = makeCanvas(SIZE, SIZE);
-  const g = c.getContext('2d');
+  const g = c.getContext('2d', { willReadFrequently: true });
   g.clearRect(0, 0, SIZE, SIZE);
   const rects = {};
   for (const [name, [col, row, cw, ch]] of Object.entries(LAYOUT)) {
