@@ -25,6 +25,8 @@ import { Stats } from './match/Stats.js';
 import { Character } from './player/Character.js';
 import { PlayerInput } from './player/PlayerController.js';
 import { CameraController } from './player/CameraController.js';
+import { EnemyAI } from './ai/EnemyAI.js';
+import { BOT_ROSTER } from './ai/BotPersonalities.js';
 import { GRAPHICS_PRESETS, DEFAULT_SETTINGS, PLAYER, CAMERA, COLORS, WEAPON_ORDER } from './config.js';
 
 const _v = new THREE.Vector3();
@@ -64,6 +66,7 @@ export class Game {
       .add('Construyendo Puerto Croma', 5, () => this.initWorld())
       .add('Mezclando la pintura', 2, () => this.initPaint())
       .add('Creando a los Drippers', 2, () => this.initCharacters())
+      .add('Despertando a los bots', 1, () => this.initBots())
       .add('Compilando shaders', 3, () => this.compileShaders());
     await loader.run();
     this.loadTimings = loader.timings;
@@ -181,6 +184,7 @@ export class Game {
         this.shake.add(0.6);
       }
       if (e.killer === this.player) this.shake.add(0.25);
+      if (e.killer && e.killer !== e.victim) e.killer.animator.setEmotion(4, 1.6);
     });
     bus.on('respawn:drop', ({ character }) => {
       if (character !== this.player) return;
@@ -256,6 +260,24 @@ export class Game {
     return c;
   }
 
+  /** 2 aliados + 3 rivales con su personalidad, arma y carril. */
+  initBots() {
+    this.ai = new EnemyAI({ collision: this.collision, paint: this.paint, characters: this.characters });
+    this.bots = [];
+    const wantBots = !this.params.has('demo') && this.params.get('bots') !== '0';
+    if (!wantBots) return;
+    const slots = [0, 0];
+    this.respawn.entries.get(this.player).slot = 1;
+    for (const r of BOT_ROSTER) {
+      const c = this.addCharacter({ name: r.name, team: r.team, look: r.look, loadout: r.loadout });
+      this.ai.add(c, r.personality, r.lane);
+      this.bots.push(c);
+      let slot = slots[r.team]++;
+      if (r.team === 0 && slot >= 1) slot++; // el jugador ocupa el hueco central
+      this.respawn.placeAtSpawn(c, slot);
+    }
+  }
+
   async compileShaders() {
     this.camera.position.set(0, 30, -80);
     this.camera.lookAt(0, 0, 0);
@@ -309,6 +331,7 @@ export class Game {
     if (this.debugIntent) Object.assign(intent, this.debugIntent);
     if (this.demoAutoAim) this.autoAimPlayer(intent);
 
+    if (this.bots.length) this.ai.update(dt, t);
     for (const c of this.characters) c.update(dt, this.moveEnv);
     if (this.demoActors.length) this.demoPost();
     this.computePlayerAim();
@@ -325,16 +348,19 @@ export class Game {
     this.territory.update(dt);
 
     this.shake.update(dt);
-    const pm = this.player.motor;
     this.cameraCtrl.baseFov = this.settings.fov;
-    if (this.deathCam.active) {
+    // ?follow=NOMBRE: cámara al hombro de un bot (capturas de depuración)
+    const focus = this.params.has('follow') ? this.characters.find((c) => c.name === this.params.get('follow')) || this.player : this.player;
+    const pm = focus.motor;
+    const fi = focus.intent;
+    if (this.deathCam.active && focus === this.player) {
       this.updateDeathCam(dt);
     } else {
       this.cameraCtrl.update(
         dt,
-        { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: intent.run, aiming: intent.aim, grounded: pm.grounded },
-        intent.lookYaw,
-        intent.lookPitch,
+        { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: fi.run, aiming: fi.aim, grounded: pm.grounded },
+        fi.lookYaw,
+        fi.lookPitch,
         this.shake
       );
     }

@@ -271,8 +271,8 @@ export class MapBuilder {
     container(b, { x: -34, z: Z(-27), rot: R(PI / 2), floor: true });
     container(b, { x: -27, z: Z(-20), rot: R(PI / 2), floor: true });
     container(b, { x: -35.5, z: Z(-12.5), rot: R(0), doorsOpen: true });
-    this.cargoBox(-30.2, Z(-24.6), 1.6, 1.3, 1.6, 0, COLORS.sand, 0.1);
-    this.cargoBox(-23.2, Z(-17.7), 1.6, 1.3, 1.6, 0, COLORS.sand, -0.15);
+    this.cargoBox(-30.1, Z(-27.4), 1.6, 1.3, 1.6, 0, COLORS.sand, 0.1);
+    this.cargoBox(-23.1, Z(-20), 1.6, 1.3, 1.6, 0, COLORS.sand, -0.15);
     walkway(b, -31.2, Z(-25.8), -28.6, Z(-21.2), CONTAINER.H);
     crate(b, -26.8, Z(-39.2), 0.2);
     crate(b, -27.9, Z(-38.3), 0.7);
