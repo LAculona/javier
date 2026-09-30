@@ -189,11 +189,18 @@ export class Particles {
 
   /** Explosión de pintura al ser eliminado. */
   explosion(x, y, z, color, team) {
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0; i < 40; i++) {
       const a = Math.random() * Math.PI * 2;
       const up = 0.2 + Math.random() * 1.1;
       const sp = 3 + Math.random() * 7;
-      this._spawn(K_CHUNK, x, y + 0.8, z, Math.cos(a) * sp, up * sp * 0.8, Math.sin(a) * sp, 0.7 + Math.random() * 0.6, 0.08 + Math.random() * 0.16, 18, 0.4, color, team, Math.random() < 0.35);
+      const big = Math.random() < 0.25;
+      this._spawn(K_CHUNK, x, y + 0.8, z, Math.cos(a) * sp, up * sp * 0.8, Math.sin(a) * sp, 0.7 + Math.random() * 0.6, big ? 0.14 + Math.random() * 0.1 : 0.05 + Math.random() * 0.06, 18, 0.4, color, team, Math.random() < 0.35);
+    }
+    // destello y anillo de gotas a ras de suelo
+    this._spawn(K_MIST, x, y + 0.8, z, 0, 0.5, 0, 0.18, 0.9, 0, 2, color, -1, false);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      this._spawn(K_DROP, x, y + 0.15, z, Math.cos(a) * 7, 1.2, Math.sin(a) * 7, 0.35, 0.06, 6, 3, color, team, i % 4 === 0);
     }
     this.splash(x, y + 0.8, z, color, team, 14, 7, 0, 1, 0, 0.2);
   }
@@ -274,7 +281,7 @@ export class Particles {
       const vy = this.vy[i];
       const vz = this.vz[i];
       const sp = Math.hypot(vx, vy, vz);
-      const stretch = 1 + Math.min(2.5, sp * 0.09);
+      const stretch = 1 + Math.min(k === K_CHUNK ? 0.55 : 2.5, sp * (k === K_CHUNK ? 0.05 : 0.09));
       const o = i * 16;
       if (sp > 0.01) {
         // eje Y = velocidad; X, Z perpendiculares
