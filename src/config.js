@@ -75,12 +75,12 @@ export const PLAYER = {
 };
 
 export const CAMERA = {
-  distance: 3.7,
-  aimDistance: 2.25,
-  shoulder: 0.78,
-  aimShoulder: 0.95,
-  height: 1.62,
-  aimHeight: 1.52,
+  distance: 3.15,
+  aimDistance: 2.0,
+  shoulder: 0.72,
+  aimShoulder: 0.9,
+  height: 1.55,
+  aimHeight: 1.48,
   fov: 70,
   runFov: 75,
   surfFov: 86,

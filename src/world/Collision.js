@@ -223,6 +223,9 @@ export class CollisionWorld {
           // centro dentro de la caja: salir por la cara más cercana
           const px = s.hx - Math.abs(_l.x);
           const pz = s.hz - Math.abs(_l.z);
+          // un empuje enorme indica un problema vertical (p. ej. bajo una losa),
+          // no una pared: se deja a la resolución vertical
+          if (Math.min(px, pz) > radius + 1.2) continue;
           if (px < pz) {
             dx = Math.sign(_l.x) || 1;
             dz = 0;

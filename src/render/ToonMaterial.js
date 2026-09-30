@@ -148,6 +148,8 @@ uniform float uGrimeHeight;
 uniform float uWear;
 uniform vec3 uWearColor;
 uniform float uPaintable;
+uniform float uFlash;
+uniform vec3 uFlashColor;
 varying vec3 vInkWorldPos;
 varying vec3 vInkWorldNormal;
 #ifdef INK_PAINT_GROUND
@@ -352,7 +354,9 @@ export function applyToonPatch(shader, mat) {
     .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + FRAG_EMISSIVE)
     .replace(
       'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
-      FRAG_RIM + '\n\tvec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance + inkRim;'
+      FRAG_RIM +
+        '\n\tvec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance + inkRim;' +
+        '\n#ifdef INK_FLASH\n\toutgoingLight = mix( outgoingLight, uFlashColor, uFlash );\n#endif'
     );
 }
 
@@ -409,6 +413,7 @@ export function createToonMaterial(o = {}) {
   if (paint === 'atlas' || paint === 'both') defines.INK_PAINT_ATLAS = '';
   if (o.overlay) defines.INK_OVERLAY = '';
   if (o.slabs) defines.INK_SLABS = '';
+  if (o.flash) defines.INK_FLASH = '';
   mat.defines = defines;
 
   mat.userData.inkUniforms = {
@@ -419,7 +424,9 @@ export function createToonMaterial(o = {}) {
     uGrimeHeight: { value: o.grimeHeight !== undefined ? o.grimeHeight : 0.9 },
     uWear: { value: wear },
     uWearColor: { value: new THREE.Color(o.wearColor !== undefined ? o.wearColor : 0xe9e2d4) },
-    uPaintable: { value: o.paintable !== undefined ? o.paintable : 1 }
+    uPaintable: { value: o.paintable !== undefined ? o.paintable : 1 },
+    uFlash: { value: 0 },
+    uFlashColor: { value: new THREE.Color(1.6, 1.6, 1.6) }
   };
   mat.onBeforeCompile = toonOnBeforeCompile;
   return mat;
