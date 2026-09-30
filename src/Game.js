@@ -20,6 +20,8 @@ import { ScreenShake } from './fx/ScreenShake.js';
 import { ProjectileSystem } from './combat/Projectile.js';
 import { WeaponSystem } from './combat/WeaponSystem.js';
 import { HealthSystem } from './combat/HealthSystem.js';
+import { RespawnSystem } from './combat/RespawnSystem.js';
+import { Stats } from './match/Stats.js';
 import { Character } from './player/Character.js';
 import { PlayerInput } from './player/PlayerController.js';
 import { CameraController } from './player/CameraController.js';
@@ -136,6 +138,80 @@ export class Game {
     };
     this.projectiles.characters = this.characters;
     this.projectiles.onHit = (p, ch, crit, dmg, x, y, z) => this.health.damage(p.owner, ch, dmg, crit, p.weapon, x, y, z, this.simTime);
+    this.stats = new Stats();
+    this.paint.onStamp = (team, area, owner) => {
+      if (owner && owner.team === team) this.stats.addPaint(owner, area);
+    };
+    this.respawn = new RespawnSystem(this.scene, {
+      paint: this.paint,
+      particles: this.particles,
+      health: this.health,
+      spawns: this.map.spawns,
+      docks: [0, 1].map((t) => ({ x: 0, y: 2.4 + 7.6, z: t === 0 ? -60.6 : 60.6 })),
+      heightAt: (x, z) => this.paint.cellHeight(x, z)
+    });
+    this.deathCam = { active: false, pos: new THREE.Vector3(), look: new THREE.Vector3(), killer: null, t: 0 };
+    this.bindCombatEvents();
+  }
+
+  /** Reacciones de juego a daño y eliminaciones. */
+  bindCombatEvents() {
+    bus.on('damage', (e) => {
+      if (e.attacker === this.player && (e.crit || e.lethal)) this.time.hitStop(40);
+      if (e.victim === this.player) {
+        this.postfx.hit(Math.min(1, e.amount / 40));
+        this.shake.add(Math.min(0.5, e.amount / 70));
+      }
+    });
+    bus.on('paintHurt', (e) => {
+      if (e.victim === this.player) this.postfx.hit(0.15);
+    });
+    bus.on('kill', (e) => {
+      this.respawn.onDeath(e.victim, e.killer, e.cause);
+      const streak = this.stats.onKill(e.killer, e.victim, e.assisters);
+      if (e.killer) bus.emit('streak', { character: e.killer, streak });
+      if (e.victim === this.player) {
+        this.time.slowMotion(0.25, 0.4);
+        const dc = this.deathCam;
+        dc.active = true;
+        dc.t = 0;
+        dc.killer = e.killer && e.killer !== this.player ? e.killer : null;
+        dc.pos.copy(this.camera.position);
+        dc.look.copy(this.player.position).setY(this.player.position.y + 1);
+        this.shake.add(0.6);
+      }
+      if (e.killer === this.player) this.shake.add(0.25);
+    });
+    bus.on('respawn:drop', ({ character }) => {
+      if (character !== this.player) return;
+      this.deathCam.active = false;
+      const sp = this.map.spawns[character.team][0];
+      this.playerInput.setView(sp.yaw, -0.12);
+      this.cameraCtrl.snap(character.position, sp.yaw, -0.12);
+    });
+  }
+
+  /** Cámara de muerte: se retira y enfoca a quien te eliminó. */
+  updateDeathCam(dt) {
+    const dc = this.deathCam;
+    dc.t += dt;
+    const p = this.player.position;
+    const target = _v;
+    if (dc.killer && dc.killer.alive) target.set(dc.killer.position.x, dc.killer.position.y + 1.1, dc.killer.position.z);
+    else target.set(p.x, p.y + 0.8, p.z);
+    // posición: detrás y por encima del punto de muerte, mirando al objetivo
+    const dx = target.x - p.x;
+    const dz = target.z - p.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const orbit = dc.killer ? 0 : dc.t * 0.35;
+    const bx = dc.killer ? -dx / len : Math.sin(orbit);
+    const bz = dc.killer ? -dz / len : Math.cos(orbit);
+    const want = this._dcWant || (this._dcWant = new THREE.Vector3());
+    want.set(p.x + bx * 4.2, p.y + 3.4, p.z + bz * 4.2);
+    const k = 1 - Math.exp(-dt * 3);
+    dc.pos.lerp(want, k);
+    dc.look.lerp(target, 1 - Math.exp(-dt * 5));
+    this.cameraCtrl.setFree(dc.pos, dc.look, 60);
   }
 
   initCharacters() {
@@ -173,6 +249,8 @@ export class Game {
     const c = new Character({ name, team, look, isPlayer, collision: this.collision });
     c.weapons = new WeaponSystem(c, loadout, this.combatCtx);
     this.health.register(c);
+    this.respawn.register(c);
+    this.stats.register(c);
     this.characters.push(c);
     this.scene.add(c.object);
     return c;
@@ -229,6 +307,7 @@ export class Game {
     const intent = this.player.intent;
     this.playerInput.sample(intent, CAMERA, true);
     if (this.debugIntent) Object.assign(intent, this.debugIntent);
+    if (this.demoAutoAim) this.autoAimPlayer(intent);
 
     for (const c of this.characters) c.update(dt, this.moveEnv);
     if (this.demoActors.length) this.demoPost();
@@ -238,6 +317,7 @@ export class Game {
       c.weapons.update(dt, c.intent, aim);
     }
     this.health.update(dt, t, this.paint);
+    this.respawn.update(dt);
     this.projectiles.update(dt);
     this.particles.update(dt);
     this.footEffects(dt);
@@ -247,13 +327,17 @@ export class Game {
     this.shake.update(dt);
     const pm = this.player.motor;
     this.cameraCtrl.baseFov = this.settings.fov;
-    this.cameraCtrl.update(
-      dt,
-      { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: intent.run, aiming: intent.aim, grounded: pm.grounded },
-      intent.lookYaw,
-      intent.lookPitch,
-      this.shake
-    );
+    if (this.deathCam.active) {
+      this.updateDeathCam(dt);
+    } else {
+      this.cameraCtrl.update(
+        dt,
+        { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: intent.run, aiming: intent.aim, grounded: pm.grounded },
+        intent.lookYaw,
+        intent.lookPitch,
+        this.shake
+      );
+    }
     this.input.endFrame();
     if (this.params.has('cam')) this.debugCamera();
     this.lighting.update(this.player.position);
@@ -368,6 +452,21 @@ export class Game {
       this.demoPaint = true;
       return;
     }
+    if (this.params.get('demo') === 'combat') {
+      // dos maniquíes enemigos; el jugador apunta solo al más cercano
+      const looks = [
+        { team: 1, hoodie: 0x9fcfb8, accessory: 'cap', accColor: 0xf6d77a },
+        { team: 1, hoodie: 0xf3e6cf, accessory: 'scarf', accColor: 0xf2a7c3 }
+      ];
+      looks.forEach((lk, i) => {
+        const c = this.addCharacter({ name: 'maniquí' + i, team: 1, look: lk, loadout: ['blaster'] });
+        c.spawnAt(-1.5 + i * 3.5, 0, -31 + i * 1.5, Math.PI);
+        this.respawn.entries.get(c).slot = i;
+        this.demoActors.push({ c, mode: 'idle', ax: c.position.x, az: c.position.z });
+      });
+      this.demoAutoAim = true;
+      return;
+    }
     if (this.params.get('demo') !== 'anim') return;
     const looks = [
       { team: 1, hoodie: 0x9fcfb8, accessory: 'cap', accColor: 0xf6d77a },
@@ -457,6 +556,29 @@ export class Game {
         it.lookPitch = -0.25 + Math.sin(t * 0.7) * 0.15;
       }
     }
+  }
+
+  /** Demo de combate: el jugador mira al enemigo vivo más cercano y dispara. */
+  autoAimPlayer(intent) {
+    let best = null;
+    let bd = Infinity;
+    for (const c of this.characters) {
+      if (!c.alive || c.team === this.player.team) continue;
+      const d = c.position.distanceTo(this.player.position);
+      if (d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    intent.fire = !!best;
+    if (!best) return;
+    const cam = this.camera.position;
+    const tx = best.position.x - cam.x;
+    const ty = best.position.y + 0.8 - cam.y;
+    const tz = best.position.z - cam.z;
+    intent.lookYaw = Math.atan2(tx, tz);
+    intent.lookPitch = Math.atan2(ty, Math.hypot(tx, tz));
+    this.playerInput.setView(intent.lookYaw, intent.lookPitch);
   }
 
   /** Mantiene a los actores de la demo en su sitio (cinta de correr). */

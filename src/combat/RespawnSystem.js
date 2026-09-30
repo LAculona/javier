@@ -184,6 +184,7 @@ export class RespawnSystem {
     const colorTeam = killer ? killer.team : ch.team;
     const color = COLORS.team[colorTeam].main;
     ch.animator.onPop();
+    ch.frozen = true;
     e.state = 'dead';
     e.timer = PLAYER.respawnTime;
     e.popT = 0.12;
@@ -213,6 +214,7 @@ export class RespawnSystem {
   /** Reaparición inmediata (inicio de partida): sin dron. */
   placeAtSpawn(ch, slot) {
     const sp = this.ctx.spawns[ch.team][slot % this.ctx.spawns[ch.team].length];
+    ch.frozen = false;
     ch.spawnAt(sp.x, sp.y, sp.z, sp.yaw);
     ch.motor.locked = false;
     this.ctx.health.reset(ch);
@@ -300,6 +302,7 @@ export class RespawnSystem {
       d.job = { ch, phase: 'go', from: m.position.clone(), to: new THREE.Vector3(sp.x, sp.y + 6.2, sp.z), sp, t: 0 };
       // el personaje cuelga del dron durante el trayecto
       this.ctx.health.reset(ch);
+      ch.frozen = false;
       ch.spawnAt(m.position.x, m.position.y - 1.3, m.position.z, sp.yaw);
       ch.alive = false;
       ch.motor.locked = true;

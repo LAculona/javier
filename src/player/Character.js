@@ -47,6 +47,7 @@ export class Character {
     this.reloadT = -1; // progreso de recarga 0..1 (o -1)
     this.rolling = false;
     this.flashExtra = 0;
+    this.frozen = false; // muerto: la física se detiene (sólo anima el "pop")
     this.animState = {
       x: 0,
       y: 0,
@@ -116,6 +117,11 @@ export class Character {
     const m = this.motor;
     m.aiming = intent.aim;
     m.reloading = this.reloadT >= 0;
+    if (this.frozen) {
+      this.animState.dead = true;
+      this.animator.update(dt, this.animState, this._groundAt);
+      return;
+    }
     m.update(dt, intent, env);
 
     // orientación del cuerpo: hacia el movimiento, o hacia la mira al disparar/apuntar
