@@ -1,0 +1,223 @@
+/* ─────────────────────────────────────────────────────────────
+   INKRUSH · estilos de interfaz
+   Paneles con forma de salpicadura, bordes gruesos, sombras duras
+   desplazadas e inclinación ligera. Bungee (titulares) + Rubik (texto).
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --orange: #ff6a13;
+  --orange-2: #ffb347;
+  --blue: #1e6bff;
+  --blue-2: #3fe0ff;
+  --ink: #241b33;
+  --ink-2: #33274a;
+  --ink-3: #4a3a68;
+  --cream: #fff3e0;
+  --cream-2: #f3e6cf;
+  --mint: #9fcfb8;
+  --lilac: #c7b8e0;
+  --pink: #f2a7c3;
+  --yellow: #f6d77a;
+  --shadow: 6px 6px 0 var(--ink);
+  --shadow-sm: 3px 3px 0 var(--ink);
+  --head: 'Bungee', 'Dela Gothic One', system-ui, sans-serif;
+  --body: 'Rubik', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--body);
+  color: var(--cream);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#app canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── pantalla de carga ─────────────────────────────────────── */
+
+.boot-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px;
+}
+
+.boot-logo {
+  margin: 0 0 8px;
+  font-family: var(--head);
+  font-weight: 400;
+  font-size: clamp(56px, 9vw, 112px);
+  letter-spacing: 2px;
+  line-height: 1;
+  transform: rotate(-4deg) skewX(-6deg);
+  filter: drop-shadow(8px 8px 0 #120c1c);
+  animation: bootBounce 2.4s ease-in-out infinite;
+}
+
+.boot-logo .o {
+  color: var(--orange);
+  -webkit-text-stroke: 3px var(--cream);
+  paint-order: stroke fill;
+}
+
+.boot-logo .b {
+  color: var(--blue);
+  -webkit-text-stroke: 3px var(--cream);
+  paint-order: stroke fill;
+}
+
+@keyframes bootBounce {
+  0%,
+  100% {
+    transform: rotate(-4deg) skewX(-6deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-3deg) skewX(-6deg) translateY(-6px);
+  }
+}
+
+.boot-drop {
+  position: relative;
+  width: 120px;
+  height: 160px;
+  filter: drop-shadow(6px 6px 0 #120c1c);
+}
+
+.boot-wave {
+  animation: bootWave 1.6s linear infinite;
+}
+
+@keyframes bootWave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(60px);
+  }
+}
+
+#dropLevel {
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.boot-pct {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 88px;
+  text-align: center;
+  font-family: var(--head);
+  font-size: 22px;
+  color: var(--cream);
+  text-shadow: 2px 2px 0 var(--ink);
+}
+
+.boot-status {
+  margin: 6px 0 0;
+  font-family: var(--head);
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--lilac);
+  text-transform: uppercase;
+}
+
+.boot-tip {
+  margin: 0;
+  max-width: 420px;
+  text-align: center;
+  font-size: 15px;
+  color: rgba(255, 243, 224, 0.7);
+}
+
+.boot-splats span {
+  position: absolute;
+  border-radius: 50% 45% 55% 48%;
+  opacity: 0.85;
+  animation: splatPop 3.2s ease-in-out infinite;
+}
+
+.boot-splats span:nth-child(1) {
+  width: 90px;
+  height: 80px;
+  left: -60px;
+  top: 20px;
+  background: var(--orange);
+}
+
+.boot-splats span:nth-child(2) {
+  width: 46px;
+  height: 42px;
+  left: -10px;
+  top: 110px;
+  background: var(--orange-2);
+  animation-delay: 0.4s;
+}
+
+.boot-splats span:nth-child(3) {
+  width: 100px;
+  height: 90px;
+  right: -70px;
+  top: 60px;
+  background: var(--blue);
+  animation-delay: 0.8s;
+}
+
+.boot-splats span:nth-child(4) {
+  width: 40px;
+  height: 36px;
+  right: -20px;
+  top: 0;
+  background: var(--blue-2);
+  animation-delay: 1.2s;
+}
+
+.boot-splats span:nth-child(5) {
+  width: 28px;
+  height: 24px;
+  left: 40%;
+  bottom: 10px;
+  background: var(--orange);
+  animation-delay: 1.6s;
+}
+
+.boot-splats span:nth-child(6) {
+  width: 22px;
+  height: 20px;
+  right: 30%;
+  bottom: 30px;
+  background: var(--blue);
+  animation-delay: 2s;
+}
+
+@keyframes splatPop {
+  0%,
+  100% {
+    transform: scale(0.9) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.08) rotate(12deg);
+  }
+}
