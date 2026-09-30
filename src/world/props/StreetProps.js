@@ -251,7 +251,7 @@ export function registerStreetProps(b) {
     ]);
     b.instanced.register('bollard', [{ name: 'bollard', geo: bol, mat: M.darkMetal, tint: false }]);
     const tire = assemble([[torus(0.42, 0.17, 10, 20), trs(0, 0, 0, 0, Math.PI / 2, 0), 0x2f2b3a]]);
-    b.instanced.register('fender', [{ name: 'tire', geo: tire, mat: M.rubber, tint: false }]);
+    b.instanced.register('fender', [{ name: 'tire', geo: tire, mat: M.rubber, tint: false, castShadow: false }]);
   }
 
   // ── aire acondicionado de fachada

@@ -194,6 +194,32 @@ export class GameManager {
     g.paint.setQuality(preset.paintQuality);
   }
 
+  /**
+   * Resolución adaptativa: si el rendimiento cae por debajo de ~50 FPS de
+   * forma sostenida, baja la escala de render (hasta el 70 % del preset);
+   * si sobra margen, la recupera poco a poco.
+   */
+  adaptResolution(rdt) {
+    const g = this.game;
+    if (g.params.has('frames') || g.params.has('fixedres')) return;
+    const r = g.renderer;
+    const base = g.preset.renderScale;
+    this.fpsT = (this.fpsT || 0) + rdt;
+    if (this.fpsT < 1) return;
+    this.fpsT = 0;
+    const fps = g.time.fps;
+    this.slow = fps < 50 ? (this.slow || 0) + 1 : 0;
+    this.fast = fps > 58 ? (this.fast || 0) + 1 : 0;
+    let s = r.renderScale;
+    if (this.slow >= 2 && s > base * 0.7 + 1e-3) s = Math.max(base * 0.7, s - 0.08);
+    else if (this.fast >= 5 && s < base - 1e-3) s = Math.min(base, s + 0.04);
+    else return;
+    this.slow = 0;
+    this.fast = 0;
+    r.renderScale = s;
+    r.resize();
+  }
+
   // ── bucle ─────────────────────────────────────────────────
 
   /** dt: tiempo de juego (escalado), rdt: tiempo real. */
@@ -213,5 +239,6 @@ export class GameManager {
     }
     this.ui.update(rdt);
     this.audio.update(rdt);
+    if (!this.paused) this.adaptResolution(rdt);
   }
 }

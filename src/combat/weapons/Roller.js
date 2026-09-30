@@ -12,8 +12,13 @@ export class Roller extends Weapon {
     this.muzzle.position.set(0, 0, 1.02);
     this.holdRotation.set(Math.PI / 2 + 0.2, 0, 0);
     this.holdOffset.set(0, -0.04, 0.02);
-    this.stowRotation.set(0.35, Math.PI, -0.55);
-    this.stowOffset.set(0.02, 0.28, -0.4);
+    // en la espalda: mango en diagonal hacia abajo y el rodillo pegado a la
+    // zona lumbar (no tapa la vista por encima del hombro)
+    const z = new THREE.Vector3(0.45, -0.85, -0.22).normalize();
+    const x = new THREE.Vector3().crossVectors(z, new THREE.Vector3(0, 0, -1)).normalize();
+    const y = new THREE.Vector3().crossVectors(z, x);
+    this.stowRotation.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+    this.stowOffset.set(-0.04, 0.1, -0.36);
     this.flickT = -1;
     this.rollAccum = 0;
     this.hitCooldowns = new Map();

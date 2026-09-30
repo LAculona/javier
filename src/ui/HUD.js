@@ -658,7 +658,7 @@ export class HUD {
     this.stats.textContent =
       `FPS ${t.fps.toFixed(0)}  (${t.frameMs.toFixed(1)} ms)\n` +
       `llamadas ${info.render.calls}  tris ${(info.render.triangles / 1000).toFixed(0)}k\n` +
-      `gráficos ${g.settings.graphics.toUpperCase()}  escala ${g.renderer.renderScale}\n` +
+      `gráficos ${g.settings.graphics.toUpperCase()}  escala ${g.renderer.renderScale.toFixed(2)}\n` +
       `territorio N ${(g.territory.orange * 100).toFixed(1)}%  A ${(g.territory.blue * 100).toFixed(1)}%\n` +
       (bots ? `\n${bots}` : '');
   }
