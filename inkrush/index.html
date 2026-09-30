@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INKRUSH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <!-- ================= HUD ================= -->
+    <div id="hud" class="hidden">
+      <div id="topbar">
+        <div class="team-score orange">
+          <span class="label">NARANJA</span>
+          <span class="pct" id="pctOrange">0%</span>
+        </div>
+        <div id="timerBox">
+          <div id="timer">3:00</div>
+          <div id="turfBar"><div id="turfO"></div><div id="turfB"></div></div>
+        </div>
+        <div class="team-score blue">
+          <span class="pct" id="pctBlue">0%</span>
+          <span class="label">AZUL</span>
+        </div>
+      </div>
+
+      <div id="minimapWrap"><canvas id="minimap" width="152" height="208"></canvas><canvas id="minimapDots" width="152" height="208"></canvas></div>
+      <div id="killfeed"></div>
+      <div id="nameTags"></div>
+
+      <div id="crosshair">
+        <div class="ch-ring"></div>
+        <div class="ch-arm t"></div><div class="ch-arm b"></div><div class="ch-arm l"></div><div class="ch-arm r"></div>
+        <div class="ch-dot"></div>
+        <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div id="reloadRing" class="hidden"><svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" class="bg"/><circle cx="30" cy="30" r="24" class="fg" id="reloadArc"/></svg><span>RECARGANDO</span></div>
+      <div id="inkWarn" class="hidden">¡SIN PINTURA! · Pulsa <b>R</b></div>
+      <div id="centerMsg"></div>
+      <div id="climbHint" class="hidden">▲ TREPANDO</div>
+
+      <div id="bottomLeft">
+        <div class="stat-row">
+          <div class="icon heart">✚</div>
+          <div class="bar health"><div id="healthFill"></div><span id="healthText">100</span></div>
+        </div>
+        <div class="stat-row">
+          <div class="icon drop">●</div>
+          <div class="bar ink"><div id="inkFill"></div><span id="inkText">100%</span></div>
+        </div>
+        <div id="kdRow"><span>BAJAS <b id="killsText">0</b></span><span>DERROTAS <b id="deathsText">0</b></span><span id="streakBox" class="hidden">RACHA <b id="streakText">0</b></span></div>
+      </div>
+
+      <div id="bottomRight">
+        <div id="weaponName">BLASTER</div>
+        <div id="weaponDesc">Equilibrado</div>
+        <div id="weaponSlots">
+          <div class="slot" data-i="0"><span class="key">1</span><span class="wicon">⬢</span><span class="wname">BLASTER</span></div>
+          <div class="slot" data-i="1"><span class="key">2</span><span class="wicon">▬</span><span class="wname">ROLLER</span></div>
+          <div class="slot" data-i="2"><span class="key">3</span><span class="wicon">✺</span><span class="wname">SPLASHER</span></div>
+        </div>
+      </div>
+
+      <div id="damageVignette"></div>
+      <div id="dmgIndicators"></div>
+      <div id="surfaceTint"></div>
+    </div>
+
+    <div id="countdown"></div>
+
+    <div id="deathScreen" class="hidden">
+      <div class="death-title">HAS SIDO ELIMINADO</div>
+      <div class="death-by">por <span id="deathKiller">—</span></div>
+      <div class="death-timer">Reapareciendo en <span id="deathTime">4</span></div>
+    </div>
+
+    <div id="clickToPlay" class="hidden"><div>Haz clic para capturar el ratón</div></div>
+
+    <!-- ================= MENÚ PRINCIPAL ================= -->
+    <div id="menu" class="screen">
+      <div class="menu-inner">
+        <div class="logo">
+          <span class="logo-ink">INK</span><span class="logo-rush">RUSH</span>
+          <div class="logo-drips"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="tagline">Pinta la ciudad. Domina el territorio.</div>
+        <div class="menu-buttons">
+          <button class="btn primary" data-action="play">JUGAR</button>
+          <button class="btn" data-action="controls">CONTROLES</button>
+          <button class="btn" data-action="options">OPCIONES</button>
+        </div>
+        <div class="menu-foot">4 vs 4 · Distrito Voltio · Partida de 3 minutos</div>
+      </div>
+    </div>
+
+    <!-- ================= CONTROLES ================= -->
+    <div id="controlsPanel" class="panel hidden">
+      <div class="panel-card">
+        <h2>CONTROLES</h2>
+        <div class="controls-grid">
+          <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><div>Moverse</div>
+          <div><kbd>Ratón</kbd></div><div>Cámara / apuntar</div>
+          <div><kbd>Clic izq.</kbd></div><div>Disparar (Roller: mantener para rodar)</div>
+          <div><kbd>Clic der.</kbd></div><div>Apuntar (zoom, más precisión)</div>
+          <div><kbd>Espacio</kbd></div><div>Saltar</div>
+          <div><kbd>Shift</kbd></div><div>Correr</div>
+          <div><kbd>R</kbd></div><div>Recargar pintura</div>
+          <div><kbd>F</kbd></div><div>Ataque cuerpo a cuerpo</div>
+          <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><div>Cambiar arma</div>
+          <div><kbd>ESC</kbd></div><div>Pausa</div>
+        </div>
+        <div class="tips">
+          <p><b>Tu pintura</b> te hace más rápido y recarga tu tanque. <b>La pintura enemiga</b> te frena y bloquea tu regeneración.</p>
+          <p>Camina contra una <b>pared pintada de tu color</b> para trepar por ella.</p>
+        </div>
+        <button class="btn" data-action="back">VOLVER</button>
+      </div>
+    </div>
+
+    <!-- ================= OPCIONES ================= -->
+    <div id="optionsPanel" class="panel hidden">
+      <div class="panel-card">
+        <h2>OPCIONES</h2>
+        <div class="opt"><label>Volumen general <span id="volVal">80</span></label><input type="range" id="optVolume" min="0" max="100" value="80"></div>
+        <div class="opt"><label>Música <span id="musVal">50</span></label><input type="range" id="optMusic" min="0" max="100" value="50"></div>
+        <div class="opt"><label>Sensibilidad del ratón <span id="sensVal">1.0</span></label><input type="range" id="optSens" min="20" max="300" value="100"></div>
+        <div class="opt"><label>Calidad gráfica</label>
+          <div class="seg" id="optQuality"><button data-v="low">BAJA</button><button data-v="medium">MEDIA</button><button data-v="high">ALTA</button></div>
+        </div>
+        <div class="opt"><label>Dificultad de los bots</label>
+          <div class="seg" id="optDifficulty"><button data-v="easy">FÁCIL</button><button data-v="normal">NORMAL</button><button data-v="hard">DIFÍCIL</button></div>
+        </div>
+        <div class="opt row"><label for="optInvert">Invertir eje Y</label><input type="checkbox" id="optInvert"></div>
+        <div class="opt row"><label for="optFps">Mostrar FPS</label><input type="checkbox" id="optFps"></div>
+        <button class="btn" data-action="back">VOLVER</button>
+      </div>
+    </div>
+
+    <!-- ================= PAUSA ================= -->
+    <div id="pauseMenu" class="panel hidden">
+      <div class="panel-card narrow">
+        <h2>PAUSA</h2>
+        <button class="btn primary" data-action="resume">CONTINUAR</button>
+        <button class="btn" data-action="restart">REINICIAR</button>
+        <button class="btn" data-action="controls">CONTROLES</button>
+        <button class="btn" data-action="options">OPCIONES</button>
+        <button class="btn danger" data-action="quit">SALIR AL MENÚ</button>
+      </div>
+    </div>
+
+    <!-- ================= FIN ================= -->
+    <div id="endBanner" class="hidden">¡FIN DE LA PARTIDA!</div>
+    <div id="endScreen" class="panel hidden">
+      <div class="panel-card wide">
+        <div id="resultTitle">¡VICTORIA!</div>
+        <div id="resultSub">El equipo NARANJA controla la ciudad</div>
+        <div class="final-bars">
+          <div class="fb orange"><div class="fb-fill" id="finalO"></div><span id="finalOText">0%</span></div>
+          <div class="fb blue"><div class="fb-fill" id="finalB"></div><span id="finalBText">0%</span></div>
+        </div>
+        <div class="my-stats">
+          <div><span>BAJAS</span><b id="resKills">0</b></div>
+          <div><span>DERROTAS</span><b id="resDeaths">0</b></div>
+          <div><span>PINTURA COLOCADA</span><b id="resPaint">0 m²</b></div>
+          <div><span>PUNTUACIÓN</span><b id="resScore">0</b></div>
+        </div>
+        <table id="scoreboard"><thead><tr><th>JUGADOR</th><th>BAJAS</th><th>DERROTAS</th><th>PINTURA</th><th>PUNTOS</th></tr></thead><tbody></tbody></table>
+        <div class="end-buttons">
+          <button class="btn primary" data-action="again">JUGAR DE NUEVO</button>
+          <button class="btn" data-action="quit">MENÚ PRINCIPAL</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fps" class="hidden">0 FPS</div>
+    <div id="loading"><div class="spinner"></div><div>CARGANDO…</div></div>
+    <div id="errorBox" class="hidden"></div>
+  </div>
+  <script src="dist/inkrush.js"></script>
+</body>
+</html>
