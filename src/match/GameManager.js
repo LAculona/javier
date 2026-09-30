@@ -3,6 +3,7 @@ import { GRAPHICS_PRESETS, DEFAULT_SETTINGS } from '../config.js';
 import { MatchManager, PHASE } from './MatchManager.js';
 import { MenuStage } from '../world/MenuStage.js';
 import { UIManager } from '../ui/UIManager.js';
+import { AudioManager } from '../audio/AudioManager.js';
 
 // ─────────────────────────────────────────────────────────────
 //  GameManager · flujo de la aplicación
@@ -43,6 +44,8 @@ export class GameManager {
     this.ui = new UIManager(g, this);
     this.hud = this.ui.hud;
     this.menus = this.ui.menus;
+    this.audio = new AudioManager(g);
+    g.audio = this.audio;
     this.applyGraphics(this.settings.graphics, true);
     bus.emit('settings:changed', this.settings);
 
@@ -209,5 +212,6 @@ export class GameManager {
       if (ph === PHASE.PLAY || ph === PHASE.COUNTDOWN) this.hud.setLockHint(!g.input.locked && !g.autoplay && !g.params.has('autostart'));
     }
     this.ui.update(rdt);
+    this.audio.update(rdt);
   }
 }

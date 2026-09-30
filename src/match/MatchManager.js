@@ -170,7 +170,9 @@ export class MatchManager {
       }
       case PHASE.END:
         this.updateEndCamera(rdt);
+        this.updateFinalSample();
         if (this.phaseT >= MATCH.endSlowmo + 1.4) {
+          this.computeResult();
           this.setPhase(PHASE.RESULTS);
           bus.emit('match:results', this.result);
         }
@@ -189,14 +191,10 @@ export class MatchManager {
     const g = this.game;
     this.remaining = 0;
     g.time.slowMotion(0.3, MATCH.endSlowmo);
-    // medición final exacta (síncrona, una sola vez)
-    g.paint.flush();
-    g.territory.sample(true);
-    const o = g.territory.orange;
-    const b = g.territory.blue;
-    const winner = Math.abs(o - b) < 1e-4 ? -1 : o > b ? 0 : 1;
-    const rows = g.stats.table(g.characters, winner);
-    this.result = { orange: o, blue: b, winner, rows, playerTeam: g.player.team };
+    // la medición final se hace cuando aterrizan los últimos proyectiles
+    this.finalSample = 'wait';
+    this.finalVersion = -1;
+    this.result = null;
     this._endFrom.copy(g.camera.position);
     this._endLookFrom.copy(g.camera.position).add(g.cameraCtrl.dir);
     g.deathCam.active = false;
@@ -206,7 +204,34 @@ export class MatchManager {
       c.intent.fire = false;
     }
     this.setPhase(PHASE.END);
-    bus.emit('match:end', this.result);
+    bus.emit('match:end');
+  }
+
+  /** Lectura asíncrona del territorio final (sin bloquear la GPU). */
+  updateFinalSample() {
+    const tr = this.game.territory;
+    if (this.finalSample === 'wait' && this.phaseT > 1.2 && !tr.pending) {
+      this.game.paint.flush();
+      this.finalVersion = tr.version;
+      tr.sample();
+      this.finalSample = 'pending';
+    }
+  }
+
+  computeResult() {
+    const g = this.game;
+    const tr = g.territory;
+    // si la lectura asíncrona no ha llegado a tiempo, medir de forma síncrona
+    this.syncFallback = this.finalSample !== 'pending' || tr.pending || tr.version === this.finalVersion;
+    if (this.syncFallback) {
+      g.paint.flush();
+      tr.sample(true);
+    }
+    const o = tr.orange;
+    const b = tr.blue;
+    const winner = Math.abs(o - b) < 1e-4 ? -1 : o > b ? 0 : 1;
+    const rows = g.stats.table(g.characters, winner);
+    this.result = { orange: o, blue: b, winner, rows, playerTeam: g.player.team };
   }
 
   updateIntro() {

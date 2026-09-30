@@ -370,6 +370,13 @@ export class Game {
       this.ai.update(dt, t);
     }
     for (const c of this.characters) if (c.active) c.update(dt, this.moveEnv);
+    if (this.audio) {
+      for (const c of this.characters) {
+        if (!c.active || !c.alive) continue;
+        if (c.motor.justJumped) this.audio.jump(c);
+        if (c.motor.justLanded > 2.5) this.audio.land(c, c.motor.justLanded / 12);
+      }
+    }
     if (this.demoActors.length) this.demoPost();
     this.computePlayerAim();
     for (const c of this.characters) {
