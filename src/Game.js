@@ -17,6 +17,7 @@ import { PaintSystem } from './paint/PaintSystem.js';
 import { TerritoryTracker } from './paint/TerritoryTracker.js';
 import { Particles } from './fx/Particles.js';
 import { ScreenShake } from './fx/ScreenShake.js';
+import { HitStop } from './fx/HitStop.js';
 import { ProjectileSystem } from './combat/Projectile.js';
 import { WeaponSystem } from './combat/WeaponSystem.js';
 import { HealthSystem } from './combat/HealthSystem.js';
@@ -27,6 +28,7 @@ import { PlayerInput } from './player/PlayerController.js';
 import { CameraController } from './player/CameraController.js';
 import { EnemyAI } from './ai/EnemyAI.js';
 import { BOT_ROSTER } from './ai/BotPersonalities.js';
+import { GameManager } from './match/GameManager.js';
 import { GRAPHICS_PRESETS, DEFAULT_SETTINGS, PLAYER, CAMERA, COLORS, WEAPON_ORDER } from './config.js';
 
 const _v = new THREE.Vector3();
@@ -46,6 +48,11 @@ export class Game {
     this.characters = [];
     this.demoActors = [];
     this.playerAim = { origin: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, 1), point: new THREE.Vector3() };
+    // qué partes de la simulación están activas (lo decide el GameManager)
+    this.flow = { look: true, control: true, ai: true, combat: true, camera: 'player', territory: true };
+    this.bots = [];
+    this.autoplay = this.params.has('autoplay');
+    this.gm = new GameManager(this);
   }
 
   // ── arranque ──────────────────────────────────────────────
@@ -70,12 +77,13 @@ export class Game {
       .add('Compilando shaders', 3, () => this.compileShaders());
     await loader.run();
     this.loadTimings = loader.timings;
+    this.gm.init();
     this.start();
   }
 
   initRenderer() {
     this.renderer = new Renderer(this.container);
-    this.preset = GRAPHICS_PRESETS[this.settings.graphics];
+    this.preset = GRAPHICS_PRESETS[this.settings.graphics] || GRAPHICS_PRESETS.medium;
     this.renderer.applyPreset(this.preset);
     this.lighting = new Lighting(this.scene);
     this.lighting.configureShadow(this.preset.shadowExtent, this.preset.shadowMapSize, this.preset.shadowRadius);
@@ -159,8 +167,8 @@ export class Game {
 
   /** Reacciones de juego a daño y eliminaciones. */
   bindCombatEvents() {
+    this.hitStop = new HitStop(this.time, () => this.player);
     bus.on('damage', (e) => {
-      if (e.attacker === this.player && (e.crit || e.lethal)) this.time.hitStop(40);
       if (e.victim === this.player) {
         this.postfx.hit(Math.min(1, e.amount / 40));
         this.shake.add(Math.min(0.5, e.amount / 70));
@@ -195,27 +203,45 @@ export class Game {
     });
   }
 
-  /** Cámara de muerte: se retira y enfoca a quien te eliminó. */
+  /** Cámara de muerte: se retira desde el punto de muerte y enfoca a quien te eliminó. */
   updateDeathCam(dt) {
     const dc = this.deathCam;
     dc.t += dt;
     const p = this.player.position;
+    const k = dc.killer && dc.killer.alive ? dc.killer : null;
     const target = _v;
-    if (dc.killer && dc.killer.alive) target.set(dc.killer.position.x, dc.killer.position.y + 1.1, dc.killer.position.z);
+    if (k) target.set(k.position.x, k.position.y + 1.0, k.position.z);
     else target.set(p.x, p.y + 0.8, p.z);
-    // posición: detrás y por encima del punto de muerte, mirando al objetivo
-    const dx = target.x - p.x;
-    const dz = target.z - p.z;
-    const len = Math.hypot(dx, dz) || 1;
-    const orbit = dc.killer ? 0 : dc.t * 0.35;
-    const bx = dc.killer ? -dx / len : Math.sin(orbit);
-    const bz = dc.killer ? -dz / len : Math.cos(orbit);
+    let bx;
+    let bz;
+    if (k) {
+      const dx = target.x - p.x;
+      const dz = target.z - p.z;
+      const len = Math.hypot(dx, dz) || 1;
+      bx = -dx / len;
+      bz = -dz / len;
+    } else {
+      const orbit = dc.t * 0.35;
+      bx = Math.sin(orbit);
+      bz = Math.cos(orbit);
+    }
+    // detrás y por encima del punto de muerte, sin atravesar paredes
+    const ox = p.x;
+    const oy = p.y + 1.8;
+    const oz = p.z;
+    let wx = bx * 3.4;
+    let wy = 0.9;
+    let wz = bz * 3.4;
+    const wl = Math.hypot(wx, wy, wz);
+    const hit = this.collision.raycast(ox, oy, oz, wx / wl, wy / wl, wz / wl, wl, cameraBlock, _hit);
+    const f = hit ? Math.max(0.15, (hit.t - 0.35) / wl) : 1;
     const want = this._dcWant || (this._dcWant = new THREE.Vector3());
-    want.set(p.x + bx * 4.2, p.y + 3.4, p.z + bz * 4.2);
-    const k = 1 - Math.exp(-dt * 3);
-    dc.pos.lerp(want, k);
-    dc.look.lerp(target, 1 - Math.exp(-dt * 5));
-    this.cameraCtrl.setFree(dc.pos, dc.look, 60);
+    want.set(ox + wx * f, oy + wy * f, oz + wz * f);
+    dc.pos.lerp(want, 1 - Math.exp(-dt * 4));
+    dc.look.lerp(target, 1 - Math.exp(-dt * 6));
+    const dist = dc.pos.distanceTo(target);
+    const fov = k ? Math.max(32, Math.min(60, 64 - dist * 1.1)) : 60;
+    this.cameraCtrl.setFree(dc.pos, dc.look, fov);
   }
 
   initCharacters() {
@@ -266,6 +292,8 @@ export class Game {
     this.bots = [];
     const wantBots = !this.params.has('demo') && this.params.get('bots') !== '0';
     if (!wantBots) return;
+    // ?autoplay: el jugador también lo maneja la IA (pruebas de partida completa)
+    if (this.autoplay) this.ai.add(this.player, 'agresivo', 'center');
     const slots = [0, 0];
     this.respawn.entries.get(this.player).slot = 1;
     for (const r of BOT_ROSTER) {
@@ -310,9 +338,9 @@ export class Game {
     // ?sim=N: N pasos de simulación de 1/60 s por fotograma (capturas deterministas)
     const simSteps = this.params.has('sim') ? +this.params.get('sim') : 0;
     if (simSteps > 0) {
-      for (let i = 0; i < simSteps; i++) this.update(1 / 60);
+      for (let i = 0; i < simSteps; i++) this.gm.update(1 / 60, 1 / 60);
     } else {
-      this.update(this.time.delta);
+      this.gm.update(this.time.delta, this.time.realDelta);
     }
     this.render();
     this.frameCount++;
@@ -326,43 +354,42 @@ export class Game {
     if (this.demoActors.length || this.demoPaint) this.updateDemo(t);
 
     // jugador: entrada → intención → apuntado desde la cámara
+    const f = this.flow;
     const intent = this.player.intent;
-    this.playerInput.sample(intent, CAMERA, true);
+    if (this.autoplay || (!f.look && !f.control)) {
+      this.input.consumeMouse();
+      this.input.consumeWheel();
+    } else {
+      this.playerInput.sample(intent, CAMERA, f.control, f.look);
+    }
     if (this.debugIntent) Object.assign(intent, this.debugIntent);
     if (this.demoAutoAim) this.autoAimPlayer(intent);
 
-    if (this.bots.length) this.ai.update(dt, t);
-    for (const c of this.characters) c.update(dt, this.moveEnv);
+    if (this.ai.bots.length) {
+      this.ai.enabled = this.flow.ai;
+      this.ai.update(dt, t);
+    }
+    for (const c of this.characters) if (c.active) c.update(dt, this.moveEnv);
     if (this.demoActors.length) this.demoPost();
     this.computePlayerAim();
     for (const c of this.characters) {
-      const aim = c === this.player ? this.playerAim : c.botAim || this.fallbackAim(c);
+      if (!c.active) continue;
+      const aim = c === this.player && !this.autoplay ? this.playerAim : c.botAim || this.fallbackAim(c);
       c.weapons.update(dt, c.intent, aim);
     }
-    this.health.update(dt, t, this.paint);
+    if (f.combat) this.health.update(dt, t, this.paint);
     this.respawn.update(dt);
     this.projectiles.update(dt);
     this.particles.update(dt);
     this.footEffects(dt);
     this.paint.flush();
-    this.territory.update(dt);
+    if (f.territory) this.territory.update(dt);
 
     this.shake.update(dt);
     this.cameraCtrl.baseFov = this.settings.fov;
-    // ?follow=NOMBRE: cámara al hombro de un bot (capturas de depuración)
-    const focus = this.params.has('follow') ? this.characters.find((c) => c.name === this.params.get('follow')) || this.player : this.player;
-    const pm = focus.motor;
-    const fi = focus.intent;
-    if (this.deathCam.active && focus === this.player) {
-      this.updateDeathCam(dt);
-    } else {
-      this.cameraCtrl.update(
-        dt,
-        { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: fi.run, aiming: fi.aim, grounded: pm.grounded },
-        fi.lookYaw,
-        fi.lookPitch,
-        this.shake
-      );
+    if (f.camera === 'player') {
+      if (this.deathCam.active) this.updateDeathCam(dt);
+      else this.updatePlayerCamera(dt);
     }
     this.input.endFrame();
     if (this.params.has('cam')) this.debugCamera();
@@ -370,6 +397,20 @@ export class Game {
     this.water.update(t);
     this.tug.position.y = this.water.heightAt(-47.5, -27) + 0.1;
     this.tug.rotation.z = Math.sin(t * 0.9) * 0.03;
+  }
+
+  /** Cámara al hombro del jugador (o de ?follow=NOMBRE). */
+  updatePlayerCamera(dt) {
+    const focus = this.params.has('follow') ? this.characters.find((c) => c.name === this.params.get('follow')) || this.player : this.player;
+    const pm = focus.motor;
+    const fi = focus.intent;
+    this.cameraCtrl.update(
+      dt,
+      { pos: pm.pos, speed: Math.hypot(pm.vel.x, pm.vel.z), surfing: pm.surfing, running: fi.run, aiming: fi.aim, grounded: pm.grounded },
+      fi.lookYaw,
+      fi.lookPitch,
+      this.shake
+    );
   }
 
   render() {
@@ -622,4 +663,8 @@ export class Game {
 
 function projectileBlock(s) {
   return s.blocksProjectiles;
+}
+
+function cameraBlock(s) {
+  return s.blocksCamera;
 }

@@ -214,6 +214,11 @@ export class Particles {
     }
   }
 
+  /** Gota grande que cae del cielo y mancha al tocar el suelo (menú). */
+  rain(x, y, z, color, team, size = 0.11) {
+    this._spawn(K_DROP, x, y, z, 0, -3 - Math.random() * 2, 0, 3, size, 16, 0.2, color, team, true);
+  }
+
   /** Confeti de pintura (victoria). */
   confetti(x, y, z, colors, n = 120, spread = 8) {
     for (let k = 0; k < n; k++) {

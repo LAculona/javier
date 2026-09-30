@@ -275,11 +275,11 @@ export class PlayerInput {
     this.pitch = pitch;
   }
 
-  sample(intent, cameraCfg, enabled = true) {
+  sample(intent, cameraCfg, enabled = true, look = enabled) {
     const inp = this.input;
     const m = inp.consumeMouse();
     const wheel = inp.consumeWheel();
-    if (enabled) {
+    if (look) {
       const sens = cameraCfg.sensitivity * this.settings.sensitivity * (intent.aim ? 0.7 : 1);
       this.yaw -= m.x * sens;
       this.pitch -= m.y * sens * (this.settings.invertY ? -1 : 1);

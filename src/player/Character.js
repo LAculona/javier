@@ -48,6 +48,8 @@ export class Character {
     this.rolling = false;
     this.flashExtra = 0;
     this.frozen = false; // muerto: la física se detiene (sólo anima el "pop")
+    this.active = true; // inactivo: ni física ni animación (oculto en el menú)
+    this.visualOffsetY = 0; // desplazamiento visual (plataforma del menú)
     this.animState = {
       x: 0,
       y: 0,
@@ -171,7 +173,7 @@ export class Character {
     s.flashExtra = this.flashExtra;
     this.animator.update(dt, s, this._groundAt);
 
-    this.object.position.set(m.pos.x, this.visualY, m.pos.z);
+    this.object.position.set(m.pos.x, this.visualY + this.visualOffsetY, m.pos.z);
     this.object.rotation.set(0, this.bodyYaw, 0);
   }
 
