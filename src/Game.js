@@ -83,6 +83,10 @@ export class Game {
 
   initRenderer() {
     this.renderer = new Renderer(this.container);
+    this.gpu = this.renderer.detectGpu();
+    // primera vez: calidad según la tarjeta gráfica (luego manda Opciones)
+    if (!this.gm.hasStoredSettings && !this.params.has('frames')) this.settings.graphics = this.gpu.tier;
+    if (this.params.has('quality') && GRAPHICS_PRESETS[this.params.get('quality')]) this.settings.graphics = this.params.get('quality');
     this.preset = GRAPHICS_PRESETS[this.settings.graphics] || GRAPHICS_PRESETS.medium;
     this.renderer.applyPreset(this.preset);
     this.lighting = new Lighting(this.scene);
@@ -312,6 +316,40 @@ export class Game {
     const r = this.renderer.renderer;
     if (r.extensions.has('KHR_parallel_shader_compile')) await r.compileAsync(this.scene, this.camera);
     else r.compile(this.scene, this.camera);
+    this.warmUp();
+  }
+
+  /**
+   * Fotograma de precalentamiento tras la pantalla de carga: todo visible,
+   * sombra que cubre el mapa entero y todos los pases activos, para que
+   * ningún shader (sombras, explosiones, daño, territorio…) se compile en
+   * mitad de la partida y provoque tirones.
+   */
+  warmUp() {
+    const hidden = [];
+    this.scene.traverse((o) => {
+      if (!o.visible && (o.isMesh || o.isGroup || o.isObject3D)) {
+        hidden.push(o);
+        o.visible = true;
+      }
+    });
+    const L = this.lighting;
+    const prev = { extent: L.extent, size: L.mapSize, radius: L.sun.shadow.radius };
+    L.configureShadow(80, prev.size, prev.radius);
+    L.update(_v.set(0, 0, 0));
+    this.camera.position.set(0, 60, -90);
+    this.camera.lookAt(0, 0, 0);
+    this.camera.updateMatrixWorld();
+    this.particles.splash(0, 1, -50, COLORS.team[0].main, 0, 4, 2);
+    this.particles.confetti(0, 5, -50, [COLORS.team[0].main], 4, 2);
+    this.particles.update(1 / 60);
+    this.postfx.warmUp();
+    this.paint.stampGround(0, 0, -200, 0.1, 0);
+    this.paint.flush();
+    this.territory.sample();
+    for (const o of hidden) o.visible = false;
+    L.configureShadow(prev.extent, prev.size, prev.radius);
+    this.particles.clear();
   }
 
   start() {

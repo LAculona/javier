@@ -179,6 +179,11 @@ export class PostFX {
     });
     this.fxPass = new EffectPass(camera, this.outline, this.bloom);
     this.composer.addPass(this.fxPass);
+    // variante sin bloom (calidad mínima): el bloom no se calcula en absoluto
+    this.outlineLite = new OutlineEffect(camera);
+    this.fxPassLite = new EffectPass(camera, this.outlineLite);
+    this.fxPassLite.enabled = false;
+    this.composer.addPass(this.fxPassLite);
 
     this.toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL });
     this.vignette = new VignetteEffect({ offset: 0.32, darkness: 0.42 });
@@ -210,21 +215,40 @@ export class PostFX {
     this.aoPass.scene = scene;
     this.aoPass.camera = camera;
     this.fxPass.mainCamera = camera;
+    this.fxPassLite.mainCamera = camera;
     this.gradePass.mainCamera = camera;
     this.chromaPass.mainCamera = camera;
     this.smaaPass.mainCamera = camera;
     this.outline.camera = camera;
+    this.outlineLite.camera = camera;
   }
 
   applyPreset(p) {
     this.aoPass.enabled = !!p.ao;
     this.aoPass.configuration.halfRes = !!p.aoHalfRes;
-    this.aoPass.setQualityMode(p.aoHalfRes ? 'Low' : 'Medium');
-    this.bloom.enabled = p.bloom !== false;
+    this.aoPass.setQualityMode(p.aoHalfRes ? 'Performance' : 'Medium');
+    const bloom = p.bloom !== false;
+    this.fxPass.enabled = bloom;
+    this.fxPassLite.enabled = !bloom;
     this.bloom.resolution.height = p.bloomResolution || 360;
     const preset = p.smaa === 'HIGH' ? SMAAPreset.HIGH : p.smaa === 'LOW' ? SMAAPreset.LOW : SMAAPreset.MEDIUM;
     this.smaa.applyPreset(preset);
     this.outline.uniforms.get('uStrength').value = p.outlines === false ? 0 : 0.85;
+    this.outlineLite.uniforms.get('uStrength').value = p.outlines === false ? 0 : 0.85;
+  }
+
+  /**
+   * Compila de antemano todos los pases (incluidos los que sólo se activan
+   * al recibir daño) para que no haya tirones la primera vez que aparecen.
+   */
+  warmUp() {
+    const passes = [this.fxPass, this.fxPassLite, this.chromaPass, this.aoPass];
+    const prev = passes.map((p) => p.enabled);
+    for (const p of passes) p.enabled = true;
+    this.outline.update();
+    this.outlineLite.update();
+    this.composer.render(1 / 60);
+    passes.forEach((p, i) => (p.enabled = prev[i]));
   }
 
   /** Pulso de daño: aberración cromática muy leve que se desvanece. */
@@ -246,7 +270,8 @@ export class PostFX {
       this.chroma.offset.set(0, 0);
       this.chromaPass.enabled = false;
     }
-    this.outline.update();
+    if (this.fxPass.enabled) this.outline.update();
+    else this.outlineLite.update();
     this.composer.render(dt);
   }
 }

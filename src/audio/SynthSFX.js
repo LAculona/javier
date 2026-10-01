@@ -107,6 +107,19 @@ export class SynthSFX {
     }
   }
 
+  /** Versión ligera del disparo para los bots (2 nodos en vez de 8). */
+  shotLite(out, t, weapon) {
+    const p = rnd(0.9, 1.12);
+    if (weapon === 'splasher') this.burst(out, t, { type: 'highpass', f0: 2400 * p, q: 0.8, dur: 0.05, vol: 0.14 });
+    else this.burst(out, t, { type: 'bandpass', f0: 1800 * p, f1: 700, q: 1.2, dur: 0.07, vol: 0.18 });
+    this.tone(out, t, { type: 'sine', f0: 760 * p, f1: 180 * p, dur: 0.08, vol: 0.26 });
+  }
+
+  /** Impacto ligero (lejano o de los bots). */
+  impactLite(out, t, k = 1) {
+    this.burst(out, t, { type: 'lowpass', f0: 1800 * rnd(0.85, 1.2), f1: 400, q: 1.2, dur: 0.08, vol: 0.16 * k, pink: true });
+  }
+
   dry(out, t) {
     this.tone(out, t, { type: 'square', f0: 1800, f1: 1500, dur: 0.025, vol: 0.06 });
     this.tone(out, t + 0.07, { type: 'square', f0: 1500, f1: 1300, dur: 0.025, vol: 0.05 });

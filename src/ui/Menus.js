@@ -167,8 +167,11 @@ export class Menus {
         <div class="dc-team"><i style="background:${PC}"></i>EQUIPO NARANJA</div>
         <div class="dc-weapons">${WEAPON_ICONS.blaster}${WEAPON_ICONS.roller}${WEAPON_ICONS.splasher}</div>
       </div>
-      <div class="menu-hint">Al pulsar JUGAR el ratón queda capturado · <kbd>ESC</kbd> para pausar</div>`
+      <div class="menu-hint">Al pulsar JUGAR el ratón queda capturado · <kbd>ESC</kbd> para pausar</div>
+      <div class="gpu-warn">SIN ACELERACIÓN GRÁFICA · activa «Usar aceleración por hardware» en tu navegador</div>`
     );
+    const gpu = this.game.gpu;
+    if (gpu && gpu.software) s.classList.add('software');
     return s;
   }
 
@@ -213,8 +216,9 @@ export class Menus {
         <div class="opt-group">
           <div class="opt-head">GRÁFICOS</div>
           <div class="opt"><span class="opt-label">Calidad</span><span class="opt-ctl seg" data-seg="graphics">
-            <button data-v="low">BAJA</button><button data-v="medium">MEDIA</button><button data-v="high">ALTA</button>
+            <button data-v="minimal">MÍNIMA</button><button data-v="low">BAJA</button><button data-v="medium">MEDIA</button><button data-v="high">ALTA</button>
           </span></div>
+          <div class="opt-gpu"></div>
         </div>
         <div class="panel-actions">${btn('back', 'VOLVER', 'cream', 0)}</div>
       </div>`
@@ -258,6 +262,14 @@ export class Menus {
     t.classList.toggle('on', !!st.invertY);
     t.querySelector('span').textContent = st.invertY ? 'SÍ' : 'NO';
     for (const b of s.querySelectorAll('[data-seg=graphics] button')) b.classList.toggle('on', b.dataset.v === st.graphics);
+    const gpu = this.game.gpu;
+    const info = s.querySelector('.opt-gpu');
+    if (gpu && info) {
+      info.textContent = gpu.software
+        ? 'Tu navegador no está usando la tarjeta gráfica: activa la aceleración por hardware para jugar fluido.'
+        : `Tarjeta gráfica: ${gpu.name || 'desconocida'}`;
+      info.classList.toggle('warn', gpu.software);
+    }
   }
 
   makePause() {

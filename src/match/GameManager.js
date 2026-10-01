@@ -16,11 +16,11 @@ const STORAGE_KEY = 'inkrush.settings.v1';
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw), stored: true };
   } catch {
     /* almacenamiento no disponible: valores por defecto */
   }
-  return { ...DEFAULT_SETTINGS };
+  return { ...DEFAULT_SETTINGS, stored: false };
 }
 
 export class GameManager {
@@ -31,7 +31,10 @@ export class GameManager {
     this.pausedAt = 0;
     this.lockSeen = false;
     // las opciones guardadas sustituyen a las de fábrica (mismo objeto compartido)
-    Object.assign(game.settings, loadSettings());
+    const loaded = loadSettings();
+    this.hasStoredSettings = loaded.stored;
+    delete loaded.stored;
+    Object.assign(game.settings, loaded);
     this.settings = game.settings;
   }
 
@@ -133,6 +136,7 @@ export class GameManager {
     this.mode = 'match';
     this.menus.show(null);
     this.hud.reset();
+    this.resetResolution();
     this.match.start();
     this.hud.setMode('intro');
     bus.emit('mode:match');
@@ -195,29 +199,50 @@ export class GameManager {
   }
 
   /**
-   * Resolución adaptativa: si el rendimiento cae por debajo de ~50 FPS de
-   * forma sostenida, baja la escala de render (hasta el 70 % del preset);
-   * si sobra margen, la recupera poco a poco.
+   * Calidad automática: si el juego se queda por debajo de ~50 FPS durante
+   * 3 s seguidos, baja un escalón: primero el preset (ALTA → MEDIA → BAJA,
+   * que quita el AO, lo más caro), luego la resolución y por último la
+   * calidad MÍNIMA. Sólo baja, nunca sube y baja en bucle (cada cambio
+   * reasigna buffers); la nueva calidad se guarda para la próxima vez.
    */
   adaptResolution(rdt) {
     const g = this.game;
     if (g.params.has('frames') || g.params.has('fixedres')) return;
-    const r = g.renderer;
-    const base = g.preset.renderScale;
+    const ph = this.match.phase;
+    if (this.mode !== 'match' || (ph !== PHASE.PLAY && ph !== PHASE.COUNTDOWN)) return;
     this.fpsT = (this.fpsT || 0) + rdt;
     if (this.fpsT < 1) return;
     this.fpsT = 0;
-    const fps = g.time.fps;
-    this.slow = fps < 50 ? (this.slow || 0) + 1 : 0;
-    this.fast = fps > 58 ? (this.fast || 0) + 1 : 0;
-    let s = r.renderScale;
-    if (this.slow >= 2 && s > base * 0.7 + 1e-3) s = Math.max(base * 0.7, s - 0.08);
-    else if (this.fast >= 5 && s < base - 1e-3) s = Math.min(base, s + 0.04);
-    else return;
+    this.slow = g.time.fps < 50 ? (this.slow || 0) + 1 : 0;
+    if (this.slow < 3) return;
+    this.slow = -3; // margen para medir de nuevo tras el cambio
+    const order = ['high', 'medium', 'low', 'minimal'];
+    const cur = this.settings.graphics;
+    const r = g.renderer;
+    const min = g.preset.renderScale * 0.75;
+    let label = '';
+    if (cur === 'high' || cur === 'medium') {
+      const next = order[order.indexOf(cur) + 1];
+      this.setSetting('graphics', next);
+      label = GRAPHICS_PRESETS[next].label;
+    } else if (r.renderScale > min + 1e-3) {
+      r.renderScale = Math.max(min, r.renderScale - 0.1);
+      r.resize();
+      label = `RESOLUCIÓN ${Math.round(r.renderScale * 100)} %`;
+    } else if (cur === 'low') {
+      this.setSetting('graphics', 'minimal');
+      label = GRAPHICS_PRESETS.minimal.label;
+    } else return;
+    this.hud.showToast(`CALIDAD AJUSTADA PARA IR FLUIDO · <b>${label}</b>`, '#ffb347');
+  }
+
+  resetResolution() {
+    const g = this.game;
     this.slow = 0;
-    this.fast = 0;
-    r.renderScale = s;
-    r.resize();
+    if (Math.abs(g.renderer.renderScale - g.preset.renderScale) > 1e-3) {
+      g.renderer.renderScale = g.preset.renderScale;
+      g.renderer.resize();
+    }
   }
 
   // ── bucle ─────────────────────────────────────────────────

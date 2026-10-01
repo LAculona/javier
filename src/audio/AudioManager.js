@@ -107,7 +107,7 @@ export class AudioManager {
     bus.on('weapon:shot', ({ character, weapon, strength }) => {
       if (weapon.id === 'roller') return; // el barrido tiene su propio evento
       if (isP(character)) this.play('shot', (o, t) => this.sfx.shot(o, t, weapon.id, strength), 0.012);
-      else this.play3D('botshot' + character.id, character.position, (o, t) => this.sfx.shot(o, t, weapon.id, 0.9), 0.05, 1.2);
+      else this.play3D('botshot', character.position, (o, t) => this.sfx.shotLite(o, t, weapon.id), 0.045, 1.2, 32);
     });
     bus.on('weapon:flick', ({ character }) => {
       if (isP(character)) this.play('flick', (o, t) => this.sfx.shot(o, t, 'roller'), 0.05);
@@ -121,7 +121,7 @@ export class AudioManager {
     });
     bus.on('weapon:reload', ({ character }) => {
       if (isP(character)) this.play('reload', (o, t) => this.sfx.reload(o, t, 1.3), 0.3);
-      else this.play3D('botreload', character.position, (o, t) => this.sfx.reload(o, t, 1.2, 0.6), 0.3, 0.8);
+      else this.play3D('botreload', character.position, (o, t) => this.sfx.reload(o, t, 1.2, 0.6), 0.6, 0.8, 16);
     });
     bus.on('weapon:reloaded', ({ character }) => {
       if (isP(character)) this.play('reloaded', (o, t) => this.sfx.reloaded(o, t), 0.1);
@@ -205,7 +205,8 @@ export class AudioManager {
     // impactos de pintura contra el mundo
     g.projectiles.onWorldHit = (p, x, y, z) => {
       const own = isP(p.owner);
-      this.play3D(own ? 'impact_own' : 'impact', { x, y, z }, (o, t) => this.sfx.impact(o, t, own ? 0.9 : 0.8), own ? 0.04 : 0.03, 1);
+      if (own) this.play3D('impact_own', { x, y, z }, (o, t) => this.sfx.impact(o, t, 0.9), 0.05, 1, 30);
+      else this.play3D('impact', { x, y, z }, (o, t) => this.sfx.impactLite(o, t, 0.8), 0.08, 1, 20);
     };
   }
 
@@ -235,16 +236,16 @@ export class AudioManager {
   }
 
   /** Sonido posicional: panner HRTF en la posición del mundo. */
-  play3D(key, pos, fn, minGap = 0, gain = 1) {
+  play3D(key, pos, fn, minGap = 0, gain = 1, maxDist = 45) {
     if (!this.ok) return;
     const cam = this.game.camera.position;
     const d = Math.hypot(pos.x - cam.x, pos.y - cam.y, pos.z - cam.z);
-    if (d > 55) return;
+    if (d > maxDist) return;
     if (!this.allow(key, minGap)) return;
-    if (this.voices > 40) return;
+    if (this.voices > 24) return;
     const ctx = this.ctx;
     const p = ctx.createPanner();
-    p.panningModel = d < 30 ? 'HRTF' : 'equalpower';
+    p.panningModel = 'equalpower'; // HRTF es caro en CPU con decenas de disparos por segundo
     p.distanceModel = 'inverse';
     p.refDistance = 3.5;
     p.rolloffFactor = 1.15;
@@ -322,12 +323,12 @@ export class AudioManager {
   /** Saltos y aterrizajes (jugador directo, bots cercanos en 3D). */
   jump(c) {
     if (c === this.game.player) this.play('jump', (o, t) => this.sfx.jump(o, t), 0.1);
-    else this.play3D('botjump', c.position, (o, t) => this.sfx.jump(o, t, 0.7), 0.15, 0.8);
+    else this.play3D('botjump', c.position, (o, t) => this.sfx.jump(o, t, 0.7), 0.25, 0.8, 18);
   }
 
   land(c, strength) {
     const k = clamp(strength, 0.3, 1.2);
     if (c === this.game.player) this.play('land', (o, t) => this.sfx.land(o, t, k), 0.1);
-    else this.play3D('botland2', c.position, (o, t) => this.sfx.land(o, t, k * 0.7), 0.15, 0.8);
+    else this.play3D('botland2', c.position, (o, t) => this.sfx.land(o, t, k * 0.7), 0.25, 0.8, 18);
   }
 }

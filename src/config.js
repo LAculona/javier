@@ -213,12 +213,27 @@ export const MATCH = {
 };
 
 export const GRAPHICS_PRESETS = {
+  minimal: {
+    label: 'MÍNIMA',
+    renderScale: 0.6,
+    maxPixelRatio: 1,
+    shadowMapSize: 1024,
+    shadowRadius: 1,
+    shadowExtent: 30,
+    ao: false,
+    aoHalfRes: true,
+    bloom: false,
+    bloomResolution: 180,
+    outlines: true,
+    smaa: 'LOW',
+    paintQuality: 'low'
+  },
   low: {
     label: 'BAJO',
     renderScale: 0.72,
     maxPixelRatio: 1,
     shadowMapSize: 1024,
-    shadowRadius: 2,
+    shadowRadius: 1.5,
     shadowExtent: 34,
     ao: false,
     aoHalfRes: true,
