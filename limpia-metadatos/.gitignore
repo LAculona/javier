@@ -2,3 +2,7 @@
 __pycache__/
 exiftool.exe
 exiftool_files/
+build/
+dist/
+salida/
+exiftool/

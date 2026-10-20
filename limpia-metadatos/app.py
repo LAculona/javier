@@ -10,9 +10,9 @@ import os
 import shutil
 import socket
 import subprocess
-import sys
 import tempfile
 import threading
+import sys
 import uuid
 import webbrowser
 import zipfile
@@ -24,7 +24,8 @@ import motores
 CARPETA_TRABAJO = tempfile.mkdtemp(prefix="limpia-metadatos-")
 atexit.register(shutil.rmtree, CARPETA_TRABAJO, True)
 
-app = Flask(__name__, static_folder="static", static_url_path="/static")
+CARPETA_APP = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+app = Flask(__name__, static_folder=os.path.join(CARPETA_APP, "static"), static_url_path="/static")
 archivos = {}  # id -> dict con los datos del archivo subido
 cerrojo = threading.Lock()
 
@@ -130,29 +131,31 @@ def listar():
         return jsonify([resumen(r) for r in archivos.values()])
 
 
+def registrar(nombre, guardar, carpeta_origen=None):
+    """Da de alta un archivo. `guardar(ruta)` escribe su contenido en esa ruta."""
+    nombre = os.path.basename(nombre or "archivo").strip() or "archivo"
+    id_archivo = uuid.uuid4().hex
+    carpeta = os.path.join(CARPETA_TRABAJO, id_archivo)
+    os.makedirs(carpeta)
+    ext = os.path.splitext(nombre)[1].lower()
+    # Nombres internos sencillos para evitar problemas con tildes o espacios.
+    original = os.path.join(carpeta, "original" + ext)
+    guardar(original)
+    ruta = os.path.join(carpeta, "archivo" + ext)
+    shutil.copyfile(original, ruta)
+    registro = {
+        "id": id_archivo, "nombre": nombre, "carpeta": carpeta, "ext": ext,
+        "original": original, "ruta": ruta, "motor": motores.elegir_motor(nombre),
+        "modificado": False, "referencia": None, "carpeta_origen": carpeta_origen,
+    }
+    with cerrojo:
+        archivos[id_archivo] = registro
+        return resumen(registro)
+
+
 @app.post("/api/subir")
 def subir():
-    nuevos = []
-    for fichero in request.files.getlist("archivos"):
-        nombre = os.path.basename(fichero.filename or "archivo").strip() or "archivo"
-        id_archivo = uuid.uuid4().hex
-        carpeta = os.path.join(CARPETA_TRABAJO, id_archivo)
-        os.makedirs(carpeta)
-        ext = os.path.splitext(nombre)[1].lower()
-        # Nombres internos sencillos para evitar problemas con tildes o espacios.
-        original = os.path.join(carpeta, "original" + ext)
-        fichero.save(original)
-        ruta = os.path.join(carpeta, "archivo" + ext)
-        shutil.copyfile(original, ruta)
-        registro = {
-            "id": id_archivo, "nombre": nombre, "carpeta": carpeta, "ext": ext,
-            "original": original, "ruta": ruta, "motor": motores.elegir_motor(nombre),
-            "modificado": False, "referencia": None,
-        }
-        with cerrojo:
-            archivos[id_archivo] = registro
-            nuevos.append(resumen(registro))
-    return jsonify(nuevos)
+    return jsonify([registrar(f.filename, f.save) for f in request.files.getlist("archivos")])
 
 
 @app.get("/api/archivo/<id_archivo>")

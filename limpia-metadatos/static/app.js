@@ -44,6 +44,8 @@ const TIPOS = {
   pdf: ["pdf"],
 };
 
+// En la aplicación de escritorio existe window.pywebview.api con diálogos nativos.
+let escritorio = false;
 let archivoAbierto = null;
 let cambios = {};
 let nuevos = [];
@@ -73,10 +75,11 @@ function extension(nombre) {
   return p > 0 ? nombre.slice(p + 1).toLowerCase() : "";
 }
 
-function aviso(texto, tipo = "") {
-  const el = crear("div", { class: `aviso-flotante ${tipo}` }, texto);
+function aviso(texto, tipo = "", accion = null) {
+  const el = crear("div", { class: `aviso-flotante ${tipo}` }, crear("span", {}, texto),
+    accion ? crear("button", { class: "accion", onclick: () => { accion.alPulsar(); el.remove(); } }, accion.texto) : null);
   $("#avisos").append(el);
-  setTimeout(() => el.remove(), tipo === "error" ? 7000 : 3500);
+  setTimeout(() => el.remove(), tipo === "error" || accion ? 7000 : 3500);
 }
 
 async function api(ruta, opciones = {}) {
@@ -145,7 +148,7 @@ function pintarLista() {
           class: "boton peque principal", disabled: !a.compatible || a.personales === 0,
           onclick: (e) => conBoton(e.currentTarget, () => limpiarArchivo(a.id)),
         }, "Limpiar"),
-        crear("a", { class: "boton peque", href: `/api/archivo/${a.id}/descargar`, title: "Descargar" }, "Descargar"),
+        botonDescargar(a.id, "boton peque"),
       ),
       crear("button", { class: "icono", title: "Quitar de la lista", "aria-label": "Quitar de la lista", onclick: () => quitarArchivo(a.id) }, "✕"),
     ));
@@ -172,20 +175,48 @@ async function subir(ficheros) {
   for (const f of ficheros) datos.append("archivos", f);
   aviso(`Analizando ${plural(ficheros.length, "archivo", "archivos")}…`);
   try {
-    const nuevosArchivos = await api("/api/subir", { method: "POST", body: datos });
-    nuevosArchivos.forEach(actualizar);
-    const conDatos = nuevosArchivos.filter((a) => a.personales > 0).length;
-    if (conDatos) aviso(`${plural(conDatos, "archivo tiene", "archivos tienen")} datos personales.`);
-    else aviso("Ninguno tiene datos personales.", "ok");
+    recibirSubidos(await api("/api/subir", { method: "POST", body: datos }));
   } catch (e) {
     aviso(e.message, "error");
   }
 }
 
+function recibirSubidos(nuevosArchivos) {
+  nuevosArchivos.forEach(actualizar);
+  const conDatos = nuevosArchivos.filter((a) => a.personales > 0).length;
+  if (conDatos) aviso(`${plural(conDatos, "archivo tiene", "archivos tienen")} datos personales.`);
+  else aviso("Ninguno tiene datos personales.", "ok");
+}
+
+// Botón de descarga: en el navegador es un enlace; en la aplicación abre «Guardar como…».
+function botonDescargar(id, clase, idElemento) {
+  return crear("a", {
+    class: clase, id: idElemento, href: `/api/archivo/${id}/descargar`,
+    onclick: (e) => {
+      if (!escritorio) return;
+      e.preventDefault();
+      conBoton(e.currentTarget, async () => {
+        const r = await window.pywebview.api.guardar(id);
+        if (r.error) aviso(r.error, "error");
+        else if (r.ok) aviso("Archivo guardado.", "ok", { texto: "Mostrar", alPulsar: () => window.pywebview.api.mostrar(r.ruta) });
+      });
+    },
+  }, escritorio ? "Guardar…" : "Descargar");
+}
+
+function activarEscritorio() {
+  if (escritorio) return;
+  escritorio = true;
+  $("#btn-descargar-todos").textContent = "Guardar todos en una carpeta…";
+  $("#paso-3").textContent = "Guarda el archivo ya limpio donde quieras. El original nunca se modifica.";
+  pintarLista();
+  if (archivoAbierto) pintarEditor();
+}
+
 async function limpiarArchivo(id) {
   const a = await api(`/api/archivo/${id}/limpiar`, { method: "POST" });
   actualizar(a);
-  aviso(a.personales === 0 ? `«${a.nombre}» está limpio. Ya puedes descargarlo.` : `Se limpió lo posible de «${a.nombre}».`, "ok");
+  aviso(a.personales === 0 ? `«${a.nombre}» está limpio. Ya puedes ${escritorio ? "guardarlo" : "descargarlo"}.` : `Se limpió lo posible de «${a.nombre}».`, "ok");
   return a;
 }
 
@@ -205,7 +236,7 @@ function pintarEditor() {
   const a = archivoAbierto;
   $("#ed-nombre").textContent = a.nombre;
   $("#ed-resumen").replaceChildren(crear("span", {}, `${tamano(a.tamano)} · ${a.motor}`), ...chipsEstado(a));
-  $("#ed-descargar").href = `/api/archivo/${a.id}/descargar`;
+  $("#ed-descargar").replaceWith(botonDescargar(a.id, "boton", "ed-descargar"));
   $("#ed-limpiar").disabled = a.personales === 0;
   $("#ed-gps").hidden = !a.gps;
   $("#ed-sensibles").hidden = !a.sensibles;
@@ -432,9 +463,27 @@ function iniciar() {
     r.archivos.forEach((a) => lista.set(a.id, a));
     pintarLista();
     if (r.errores.length) aviso(`Algunos no se pudieron limpiar: ${r.errores.join(" · ")}`, "error");
-    else aviso("Todos los archivos están limpios. Ya puedes descargarlos.", "ok");
+    else aviso(`Todos los archivos están limpios. Ya puedes ${escritorio ? "guardarlos" : "descargarlos"}.`, "ok");
   }));
-  $("#btn-descargar-todos").addEventListener("click", () => { location.href = "/api/descargar-todos"; });
+  $("#btn-descargar-todos").addEventListener("click", (e) => {
+    if (!escritorio) { location.href = "/api/descargar-todos"; return; }
+    conBoton(e.currentTarget, async () => {
+      const r = await window.pywebview.api.guardar_todos();
+      if (r.ok) aviso(`${plural(r.total, "archivo guardado", "archivos guardados")}.`, "ok", { texto: "Abrir carpeta", alPulsar: () => window.pywebview.api.mostrar(r.ruta) });
+    });
+  });
+  $("#zona").addEventListener("click", async (e) => {
+    if (!escritorio) return; // en el navegador se usa el selector normal
+    e.preventDefault();
+    try {
+      const nuevosArchivos = await window.pywebview.api.elegir_archivos();
+      if (nuevosArchivos.length) recibirSubidos(nuevosArchivos);
+    } catch (error) {
+      aviso(String(error.message || error), "error");
+    }
+  });
+  if (window.pywebview?.api) activarEscritorio();
+  else window.addEventListener("pywebviewready", activarEscritorio);
   $("#btn-quitar-todos").addEventListener("click", async () => {
     if (!confirm("¿Quitar todos los archivos de la lista?")) return;
     await api("/api/archivos", { method: "DELETE" });

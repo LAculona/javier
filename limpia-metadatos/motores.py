@@ -17,7 +17,8 @@ import warnings
 import zipfile
 import xml.etree.ElementTree as ET
 
-CARPETA_APP = os.path.dirname(os.path.abspath(__file__))
+# Dentro de la aplicación instalada (PyInstaller) los recursos están en sys._MEIPASS.
+CARPETA_APP = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 
 # Campos "fáciles" que se ofrecen al añadir un metadato.
 CAMPOS = [
@@ -105,6 +106,16 @@ class Motor:
 
 
 def buscar_exiftool():
+    """Devuelve la orden para ejecutar ExifTool (lista) o None si no está."""
+    # 1. El que viene dentro de la aplicación instalada.
+    incluido = os.path.join(CARPETA_APP, "exiftool", "exiftool.exe")
+    if sys.platform == "win32" and os.path.isfile(incluido):
+        return [incluido]
+    script = os.path.join(CARPETA_APP, "exiftool", "exiftool")
+    perl = shutil.which("perl") or ("/usr/bin/perl" if os.path.exists("/usr/bin/perl") else None)
+    if sys.platform != "win32" and os.path.isfile(script) and perl:
+        return [perl, script]
+    # 2. Uno instalado en el equipo.
     for candidato in (
         os.path.join(CARPETA_APP, "exiftool.exe"),
         os.path.join(CARPETA_APP, "herramientas", "exiftool.exe"),
@@ -113,8 +124,13 @@ def buscar_exiftool():
         os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "ExifTool", "ExifTool.exe"),
     ):
         if os.path.isfile(candidato):
-            return candidato
-    return shutil.which("exiftool")
+            return [candidato]
+    # Las apps de Mac abiertas desde el Finder no ven el PATH de Homebrew.
+    for carpeta in ("/opt/homebrew/bin", "/usr/local/bin"):
+        if os.path.isfile(os.path.join(carpeta, "exiftool")):
+            return [os.path.join(carpeta, "exiftool")]
+    encontrado = shutil.which("exiftool")
+    return [encontrado] if encontrado else None
 
 
 EXIFTOOL = buscar_exiftool()
@@ -154,7 +170,7 @@ def _ejecutar_exiftool(argumentos):
         if sys.platform == "win32":
             opciones["creationflags"] = 0x08000000  # sin ventana de consola
         r = subprocess.run(
-            [EXIFTOOL, "-charset", "filename=utf8", "-@", fichero_args],
+            [*EXIFTOOL, "-charset", "filename=utf8", "-@", fichero_args],
             capture_output=True, stdin=subprocess.DEVNULL, **opciones,
         )
     finally:

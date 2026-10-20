@@ -6,33 +6,35 @@ fotos, vídeos, PDF, Word, Excel, PowerPoint, LibreOffice y música.
 Funciona **en tu propio ordenador**: tus archivos no se suben a internet y la
 aplicación solo es accesible desde tu equipo. Al cerrarla se borra todo lo temporal.
 
-## Cómo abrirla
+## Instalarla
 
-| Sistema | Qué hacer |
-|---|---|
-| **Windows** | Doble clic en `iniciar.bat` |
-| **Mac** | Doble clic en `iniciar.command` (la primera vez: clic derecho → Abrir) |
-| **Linux** | `./iniciar.command` en una terminal |
+Descarga el instalador de tu sistema desde la página de descargas:
+**https://github.com/LAculona/javier/releases/latest**
 
-Se abrirá el navegador solo. Para cerrar la aplicación, cierra la ventana negra.
+- **Windows**: `LimpiaMetadatos-Instalador-Windows.exe`. Ábrelo y sigue los pasos.
+  Como el programa no está firmado por Microsoft, puede salir «Windows protegió su PC»:
+  pulsa *Más información* → *Ejecutar de todas formas*.
+- **Mac** (con chip Apple M1/M2/M3/M4): `LimpiaMetadatos-Mac.dmg`. Ábrelo y arrastra
+  *Limpia Metadatos* a *Aplicaciones*. La primera vez ábrela con clic derecho → *Abrir*;
+  si no deja, ve a *Ajustes del Sistema → Privacidad y seguridad* → *Abrir igualmente*.
 
-La primera vez tarda un poco porque prepara lo que necesita. Solo hace falta tener
-**Python 3** instalado (en Windows, marca la casilla *Add python.exe to PATH* al instalarlo).
+La aplicación ya incluye todo lo necesario (también ExifTool): no hay que instalar
+nada más. Se abre en su propia ventana, como cualquier otro programa.
 
-### ExifTool (recomendado)
+### Crear los instaladores
 
-[ExifTool](https://exiftool.org) es el programa que permite trabajar con **vídeos y
-casi cualquier formato**. En Windows, el lanzador te ofrece instalarlo la primera vez.
-También puedes hacerlo a mano:
+Los instaladores los fabrica GitHub automáticamente cada vez que se cambia algo en
+esta carpeta (ver `.github/workflows/instaladores.yml`), y los publica en *Releases*.
 
-- Windows: `winget install OliverBetz.ExifTool`, o descarga el `.zip` de exiftool.org,
-  renombra `exiftool(-k).exe` a `exiftool.exe` y ponlo (con su carpeta `exiftool_files`)
-  dentro de esta carpeta.
-- Mac: `brew install exiftool`
-- Linux: `sudo apt install libimage-exiftool-perl`
+### Usarla sin instalar (para desarrollo)
 
-Sin ExifTool siguen funcionando PDF, Office, LibreOffice y música, y las fotos se
-pueden ver y limpiar (pero no editar).
+Con Python 3 instalado: doble clic en `iniciar.bat` (Windows) o `iniciar.command`
+(Mac/Linux). Así se abre en el navegador. Para la ventana propia:
+`pip install -r requirements-escritorio.txt` y `python escritorio.py`.
+
+Si la usas así, conviene instalar [ExifTool](https://exiftool.org) para vídeos y
+muchos más formatos (Windows: `winget install OliverBetz.ExifTool`, Mac:
+`brew install exiftool`, Linux: `sudo apt install libimage-exiftool-perl`).
 
 ## Cómo se usa
 
@@ -44,7 +46,7 @@ pueden ver y limpiar (pero no editar).
    - **Ver y editar**: cambia el texto de cualquier dato, quítalo con la papelera
      o **añade** uno nuevo (título, autor, copyright, fecha…). Pulsa *Guardar cambios*.
    - Atajos dentro del editor: **Quitar solo la ubicación** y **Quitar los datos sensibles**.
-4. **Descarga** el archivo (o todos juntos en un `.zip`).
+4. **Guarda** el archivo limpio donde quieras (o todos juntos en una carpeta).
 
 Tu archivo original no se toca nunca, y siempre puedes pulsar **Volver al original**.
 
@@ -65,11 +67,9 @@ Tu archivo original no se toca nunca, y siempre puedes pulsar **Volver al origin
 
 ## Si no se abre
 
-- **No funciona al hacer doble clic dentro del zip**: primero descomprímelo
-  (clic derecho → *Extraer todo*) y abre `iniciar.bat` desde la carpeta creada.
-- **Dice que falta Python**: instálalo desde [python.org](https://www.python.org/downloads/)
-  marcando la casilla *Add python.exe to PATH* y vuelve a abrir `iniciar.bat`.
-- **La ventana negra dice «Limpia Metadatos está funcionando» pero no se abre el
-  navegador**: abre tu navegador y escribe la dirección que aparece en la ventana
-  (normalmente `http://127.0.0.1:5050`). No cierres la ventana negra mientras la uses.
-- **Sale otro error**: haz una foto de la ventana negra para ver qué pasa.
+- **Windows dice que falta «WebView2»**: instálalo gratis desde
+  https://developer.microsoft.com/microsoft-edge/webview2/ (Windows 10 y 11 casi
+  siempre lo traen ya).
+- **Mac dice que la app está dañada o no se puede abrir**: clic derecho → *Abrir*, o
+  *Ajustes del Sistema → Privacidad y seguridad* → *Abrir igualmente*.
+- **Otro problema**: haz una captura del mensaje para ver qué pasa.

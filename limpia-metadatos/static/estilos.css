@@ -345,6 +345,18 @@ main { max-width: 980px; margin: 0 auto; padding: 16px 20px 80px; }
   font-size: 14px;
   animation: subir .2s ease-out;
 }
+.aviso-flotante { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.aviso-flotante .accion {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.aviso-flotante .accion:hover { background: rgba(255, 255, 255, .15); }
 .aviso-flotante.ok { background: #166534; }
 .aviso-flotante.error { background: #b91c1c; }
 @keyframes subir { from { transform: translateY(10px); opacity: 0; } }

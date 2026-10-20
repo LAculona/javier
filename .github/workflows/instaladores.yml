@@ -1,0 +1,144 @@
+name: Instaladores de Limpia Metadatos
+
+on:
+  push:
+    paths:
+      - "limpia-metadatos/**"
+      - ".github/workflows/instaladores.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: limpia-metadatos
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-escritorio.txt
+
+      - name: Descargar ExifTool
+        shell: pwsh
+        run: |
+          $v = ([string](Invoke-WebRequest -UseBasicParsing https://exiftool.org/ver.txt).Content).Trim()
+          Write-Host "ExifTool $v"
+          $urls = @("https://exiftool.org/exiftool-${v}_64.zip",
+                    "https://sourceforge.net/projects/exiftool/files/exiftool-${v}_64.zip/download")
+          foreach ($u in $urls) {
+            try { Invoke-WebRequest -UseBasicParsing -UserAgent "Wget" $u -OutFile et.zip; break } catch { Write-Host "Falló $u" }
+          }
+          Expand-Archive et.zip -DestinationPath et
+          $dir = Get-ChildItem et -Directory | Select-Object -First 1
+          New-Item -ItemType Directory exiftool | Out-Null
+          Copy-Item "$($dir.FullName)\exiftool(-k).exe" exiftool\exiftool.exe
+          Copy-Item "$($dir.FullName)\exiftool_files" exiftool\ -Recurse
+          exiftool\exiftool.exe -ver
+
+      - name: Crear la aplicación
+        run: pyinstaller --noconfirm limpia-metadatos.spec
+
+      - name: Probar la aplicación creada
+        shell: pwsh
+        run: |
+          $res = "$env:RUNNER_TEMP\prueba.txt"
+          Start-Process -FilePath "dist\Limpia Metadatos\Limpia Metadatos.exe" -ArgumentList "--prueba", $res -Wait
+          Get-Content $res
+          if (-not (Select-String -Path $res -Pattern "^OK$" -Quiet)) { exit 1 }
+
+      - name: Crear el instalador
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DVersion=1.0.${{ github.run_number }}" instalador.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-windows
+          path: limpia-metadatos/salida/LimpiaMetadatos-Instalador-Windows.exe
+
+  mac:
+    runs-on: macos-latest
+    env:
+      VERSION_APP: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements-escritorio.txt
+
+      - name: Descargar ExifTool
+        run: |
+          v=$(curl -fsSL https://exiftool.org/ver.txt | tr -d '[:space:]')
+          echo "ExifTool $v"
+          curl -fsSL -o et.tar.gz "https://exiftool.org/Image-ExifTool-$v.tar.gz" \
+            || curl -fsSL -o et.tar.gz "https://sourceforge.net/projects/exiftool/files/Image-ExifTool-$v.tar.gz/download"
+          tar xzf et.tar.gz
+          mkdir exiftool
+          cp "Image-ExifTool-$v/exiftool" exiftool/
+          cp -R "Image-ExifTool-$v/lib" exiftool/
+          perl exiftool/exiftool -ver
+
+      - name: Crear la aplicación
+        run: pyinstaller --noconfirm limpia-metadatos.spec
+
+      - name: Probar la aplicación creada
+        run: |
+          "dist/Limpia Metadatos.app/Contents/MacOS/Limpia Metadatos" --prueba "$RUNNER_TEMP/prueba.txt" || true
+          cat "$RUNNER_TEMP/prueba.txt"
+          grep -qx OK "$RUNNER_TEMP/prueba.txt"
+
+      - name: Crear el .dmg
+        run: |
+          mkdir -p dmg salida
+          cp -R "dist/Limpia Metadatos.app" dmg/
+          ln -s /Applications dmg/Aplicaciones
+          hdiutil create -volname "Limpia Metadatos" -srcfolder dmg -ov -format UDZO salida/LimpiaMetadatos-Mac.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-mac
+          path: limpia-metadatos/salida/LimpiaMetadatos-Mac.dmg
+
+  publicar:
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: instaladores
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Limpia Metadatos 1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            **Descarga el instalador de tu sistema:**
+
+            - 🪟 **Windows**: `LimpiaMetadatos-Instalador-Windows.exe`
+            - 🍎 **Mac** (con chip Apple M1/M2/M3/M4): `LimpiaMetadatos-Mac.dmg`
+
+            Al no estar firmado por Microsoft/Apple, la primera vez saldrá un aviso:
+            - Windows: «Windows protegió su PC» → *Más información* → *Ejecutar de todas formas*.
+            - Mac: abre la app con clic derecho → *Abrir*. Si no deja, ve a *Ajustes del Sistema → Privacidad y seguridad* → *Abrir igualmente*.
+          files: instaladores/*
