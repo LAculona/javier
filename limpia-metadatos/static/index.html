@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpia Metadatos</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%232563eb' d='M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z'/></svg>">
+  <link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+  <header class="cabecera">
+    <div class="marca">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5z"/><path class="tick" d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+      <div>
+        <h1>Limpia Metadatos</h1>
+        <p>Tus archivos no salen de tu ordenador</p>
+      </div>
+    </div>
+    <span id="estado-exiftool" class="pastilla"></span>
+  </header>
+
+  <main>
+    <label id="zona" class="zona">
+      <input id="selector" type="file" multiple hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <strong>Arrastra aquí tus archivos</strong>
+      <span>o haz clic para elegirlos · fotos, vídeos, PDF, Word, Excel, música…</span>
+    </label>
+
+    <section id="lista-vacia" class="vacio">
+      <h2>¿Cómo funciona?</h2>
+      <ol class="pasos">
+        <li><b>1</b><span>Añade uno o varios archivos.</span></li>
+        <li><b>2</b><span>Pulsa <em>Limpiar</em> para borrar todos sus metadatos, o <em>Ver y editar</em> para cambiar los que quieras.</span></li>
+        <li><b>3</b><span>Descarga el archivo ya limpio. El original nunca se modifica.</span></li>
+      </ol>
+    </section>
+
+    <section id="panel-archivos" hidden>
+      <div class="barra">
+        <h2 id="titulo-lista">Archivos</h2>
+        <div class="acciones">
+          <button id="btn-limpiar-todos" class="boton principal">Limpiar todos</button>
+          <button id="btn-descargar-todos" class="boton">Descargar todos (.zip)</button>
+          <button id="btn-quitar-todos" class="boton fantasma">Vaciar lista</button>
+        </div>
+      </div>
+      <ul id="lista" class="lista"></ul>
+    </section>
+  </main>
+
+  <!-- Editor de un archivo -->
+  <div id="fondo" class="fondo" hidden></div>
+  <aside id="editor" class="editor" hidden aria-modal="true" role="dialog">
+    <header class="editor-cabecera">
+      <div class="editor-titulo">
+        <h2 id="ed-nombre"></h2>
+        <p id="ed-resumen"></p>
+      </div>
+      <button id="ed-cerrar" class="icono" title="Cerrar (Esc)" aria-label="Cerrar">✕</button>
+    </header>
+
+    <div class="editor-acciones">
+      <button id="ed-limpiar" class="boton principal">Limpiar todo</button>
+      <button id="ed-gps" class="boton aviso" hidden>Quitar solo la ubicación</button>
+      <button id="ed-sensibles" class="boton" hidden>Quitar los datos sensibles</button>
+      <button id="ed-restaurar" class="boton fantasma" hidden>Volver al original</button>
+      <a id="ed-descargar" class="boton" href="#">Descargar</a>
+    </div>
+
+    <div class="editor-cuerpo">
+      <input id="ed-buscar" class="buscar" type="search" placeholder="Buscar un dato…">
+
+      <section>
+        <h3>Datos personales <span id="ed-cuenta" class="contador"></span></h3>
+        <p class="ayuda">Puedes cambiar el texto de cualquier dato o pulsar la papelera para quitarlo. Los marcados en <span class="punto"></span> naranja pueden revelar quién eres, dónde estás o qué equipo usas.</p>
+        <div id="ed-personales" class="tabla"></div>
+      </section>
+
+      <section id="ed-bloque-anadir">
+        <h3>Añadir un dato</h3>
+        <div class="anadir">
+          <select id="ed-campo"></select>
+          <input id="ed-campo-otro" type="text" placeholder="Nombre del dato (ej. Artist)" hidden>
+          <input id="ed-valor" type="text" placeholder="Valor">
+          <button id="ed-anadir" class="boton">Añadir</button>
+        </div>
+        <ul id="ed-nuevos" class="nuevos"></ul>
+      </section>
+
+      <details>
+        <summary>Información técnica <span id="ed-cuenta-tecnica" class="contador"></span></summary>
+        <p class="ayuda">Datos propios del formato (tamaño, resolución, duración…). No dicen nada de ti y no hace falta borrarlos.</p>
+        <div id="ed-tecnicos" class="tabla"></div>
+      </details>
+    </div>
+
+    <footer id="ed-pie" class="editor-pie" hidden>
+      <span id="ed-pendientes"></span>
+      <button id="ed-descartar" class="boton fantasma">Descartar</button>
+      <button id="ed-guardar" class="boton principal">Guardar cambios</button>
+    </footer>
+  </aside>
+
+  <div id="avisos" class="avisos" aria-live="polite"></div>
+  <div id="soltar" class="soltar" hidden><div>Suelta los archivos aquí</div></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
