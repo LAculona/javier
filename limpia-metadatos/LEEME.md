@@ -62,3 +62,14 @@ Tu archivo original no se toca nunca, y siempre puedes pulsar **Volver al origin
 > Ojo: los metadatos son los datos *ocultos* del archivo. El **contenido** no se
 > modifica: si un Word tiene comentarios o control de cambios con tu nombre, o una
 > foto muestra algo identificable, eso sigue ahí.
+
+## Si no se abre
+
+- **No funciona al hacer doble clic dentro del zip**: primero descomprímelo
+  (clic derecho → *Extraer todo*) y abre `iniciar.bat` desde la carpeta creada.
+- **Dice que falta Python**: instálalo desde [python.org](https://www.python.org/downloads/)
+  marcando la casilla *Add python.exe to PATH* y vuelve a abrir `iniciar.bat`.
+- **La ventana negra dice «Limpia Metadatos está funcionando» pero no se abre el
+  navegador**: abre tu navegador y escribe la dirección que aparece en la ventana
+  (normalmente `http://127.0.0.1:5050`). No cierres la ventana negra mientras la uses.
+- **Sale otro error**: haz una foto de la ventana negra para ver qué pasa.

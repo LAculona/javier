@@ -9,6 +9,8 @@ import io
 import os
 import shutil
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
 import uuid
@@ -264,6 +266,24 @@ def descargar_todos():
     return send_file(memoria, as_attachment=True, download_name="archivos-limpios.zip")
 
 
+def abrir_navegador(direccion):
+    try:
+        if webbrowser.open(direccion):
+            return
+    except Exception:
+        pass
+    # Alternativas por si el módulo webbrowser no encuentra el navegador.
+    try:
+        if sys.platform == "win32":
+            os.startfile(direccion)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", direccion])
+        else:
+            subprocess.Popen(["xdg-open", direccion])
+    except Exception:
+        pass
+
+
 def puerto_libre(preferido=5050):
     for puerto in range(preferido, preferido + 50):
         with socket.socket() as s:
@@ -284,12 +304,22 @@ if __name__ == "__main__":
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     puerto = puerto_libre()
     direccion = f"http://127.0.0.1:{puerto}"
-    print("\n  Limpia Metadatos está funcionando.")
-    print(f"  Abre {direccion} en tu navegador (se abrirá solo).")
-    print("  Para cerrarla, cierra esta ventana o pulsa Ctrl+C.\n")
+    print()
+    print("  ==============================================================")
+    print("   Limpia Metadatos está funcionando.")
+    print()
+    print("   Se abrirá sola en tu navegador. Si no se abre, copia esta")
+    print("   dirección en la barra de direcciones del navegador:")
+    print()
+    print(f"       {direccion}")
+    print()
+    print("   NO cierres esta ventana mientras uses la aplicación.")
+    print("   Para salir, ciérrala o pulsa Ctrl+C.")
+    print("  ==============================================================")
+    print()
     if not motores.EXIFTOOL:
         print("  Aviso: ExifTool no está instalado. Fotos (solo limpiar), PDF, Office y audio")
         print("  funcionan igual; para vídeos y el resto de formatos instala ExifTool.\n")
     if not os.environ.get("SIN_NAVEGADOR"):
-        threading.Timer(1.0, webbrowser.open, [direccion]).start()
+        threading.Timer(1.5, abrir_navegador, [direccion]).start()
     app.run(host="127.0.0.1", port=puerto, debug=False)
