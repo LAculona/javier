@@ -86,6 +86,13 @@ jobs:
           Get-Content $env:LIMPIA_PRUEBA_VENTANA
           if (-not (Select-String -Path $env:LIMPIA_PRUEBA_VENTANA -Pattern "^OK$" -Quiet)) { exit 1 }
 
+      - name: Mostrar errores de Windows si la ventana falló
+        if: failure()
+        shell: pwsh
+        run: |
+          Get-WinEvent -FilterHashtable @{LogName = "Application"; ProviderName = ".NET Runtime", "Application Error"} -MaxEvents 4 -ErrorAction SilentlyContinue |
+            Format-List TimeCreated, ProviderName, Message
+
       - name: Analizar con Microsoft Defender
         shell: pwsh
         continue-on-error: true

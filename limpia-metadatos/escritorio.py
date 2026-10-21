@@ -226,7 +226,8 @@ def abrir_ventana():
         text_select=True,
     )
     puente._ventana = ventana
-    icono = os.path.join(servidor.CARPETA_APP, "recursos", "icono.png")
+    # En Windows la ventana toma el icono del propio .exe; pasarle el .png la hace fallar.
+    icono = os.path.join(servidor.CARPETA_APP, "recursos", "icono.png") if sys.platform != "win32" else ""
     prueba_ventana = os.environ.get("LIMPIA_PRUEBA_VENTANA")
     logging.info("Abriendo la ventana (servidor en el puerto %s)", servidor_web.server_port)
     webview.start(
