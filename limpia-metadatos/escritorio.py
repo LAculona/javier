@@ -207,6 +207,8 @@ def comprobar_ventana(ventana, fichero_resultado):
 
 
 def abrir_ventana():
+    import logging
+
     import webview
     from werkzeug.serving import make_server
 
@@ -226,18 +228,43 @@ def abrir_ventana():
     puente._ventana = ventana
     icono = os.path.join(servidor.CARPETA_APP, "recursos", "icono.png")
     prueba_ventana = os.environ.get("LIMPIA_PRUEBA_VENTANA")
+    logging.info("Abriendo la ventana (servidor en el puerto %s)", servidor_web.server_port)
     webview.start(
         comprobar_ventana if prueba_ventana else None,
         (ventana, prueba_ventana) if prueba_ventana else None,
         private_mode=True,
         icon=icono if os.path.isfile(icono) else None,
     )
+    logging.info("Ventana cerrada")
     servidor_web.shutdown()
+
+
+_fichero_fallos = None
+
+
+def preparar_registro():
+    """Guarda lo que pasa al arrancar en registro.txt, para poder ver por qué falla."""
+    import faulthandler
+    import logging
+
+    ruta = os.path.join(carpeta_registro(), "registro.txt")
+    logging.basicConfig(filename=ruta, filemode="w", level=logging.INFO, encoding="utf-8",
+                        format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    logging.getLogger("pywebview").setLevel(logging.DEBUG)
+    # Los cierres bruscos (fallos dentro de librerías nativas) también quedan apuntados.
+    global _fichero_fallos
+    _fichero_fallos = open(os.path.join(carpeta_registro(), "fallo-grave.txt"), "w", encoding="utf-8")
+    faulthandler.enable(_fichero_fallos)
+    logging.info("Arrancando Limpia Metadatos en %s (Python %s)", sys.platform, sys.version.split()[0])
 
 
 def main():
     if len(sys.argv) > 2 and sys.argv[1] == "--prueba":
         sys.exit(prueba(sys.argv[2]))
+    try:
+        preparar_registro()
+    except OSError:
+        pass
     try:
         abrir_ventana()
     except Exception:  # noqa: BLE001 - cualquier fallo al arrancar se le enseña a la persona

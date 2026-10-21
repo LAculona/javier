@@ -77,7 +77,11 @@ jobs:
           $env:LIMPIA_PRUEBA_VENTANA = "$env:RUNNER_TEMP\ventana.txt"
           $app = Start-Process $exe -PassThru
           if (-not $app.WaitForExit(120000)) { $app.Kill(); Write-Host "La ventana no se cerró a tiempo" }
-          if (Test-Path "$env:LOCALAPPDATA\Limpia Metadatos\error.txt") { Get-Content "$env:LOCALAPPDATA\Limpia Metadatos\error.txt" }
+          Write-Host "Código de salida: $($app.ExitCode)"
+          foreach ($f in "registro.txt", "fallo-grave.txt", "error.txt") {
+            $r = "$env:LOCALAPPDATA\Limpia Metadatos\$f"
+            if (Test-Path $r) { Write-Host "----- $f -----"; Get-Content $r }
+          }
           if (-not (Test-Path $env:LIMPIA_PRUEBA_VENTANA)) { Write-Host "La ventana no llegó a abrirse"; exit 1 }
           Get-Content $env:LIMPIA_PRUEBA_VENTANA
           if (-not (Select-String -Path $env:LIMPIA_PRUEBA_VENTANA -Pattern "^OK$" -Quiet)) { exit 1 }
