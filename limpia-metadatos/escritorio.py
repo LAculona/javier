@@ -149,10 +149,64 @@ def prueba(fichero_resultado):
         shutil.rmtree(carpeta, ignore_errors=True)
 
 
-def main():
-    if len(sys.argv) > 2 and sys.argv[1] == "--prueba":
-        sys.exit(prueba(sys.argv[2]))
+def carpeta_registro():
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+    elif sys.platform == "darwin":
+        base = os.path.expanduser("~/Library/Logs")
+    else:
+        base = os.path.expanduser("~/.cache")
+    carpeta = os.path.join(base, "Limpia Metadatos")
+    os.makedirs(carpeta, exist_ok=True)
+    return carpeta
 
+
+def avisar_error(detalle):
+    """Guarda el error en un archivo y lo muestra en una ventanita, para no fallar en silencio."""
+    try:
+        registro = os.path.join(carpeta_registro(), "error.txt")
+        with open(registro, "w", encoding="utf-8") as f:
+            f.write(detalle)
+    except OSError:
+        registro = "(no se pudo guardar)"
+    mensaje = ("Limpia Metadatos no ha podido abrirse.\n\n"
+               f"{detalle.strip().splitlines()[-1]}\n\n"
+               f"El detalle está guardado en:\n{registro}")
+    if "WebView2" in detalle or "webview2" in detalle.lower():
+        mensaje += ("\n\nFalta el componente WebView2 de Microsoft. Instálalo gratis desde:\n"
+                    "https://developer.microsoft.com/microsoft-edge/webview2/")
+    try:
+        if sys.platform == "win32":
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(None, mensaje, "Limpia Metadatos", 0x10)
+        elif sys.platform == "darwin":
+            texto = mensaje.replace("\\", "\\\\").replace('"', '\\"')
+            subprocess.run(["osascript", "-e", f'display alert "Limpia Metadatos" message "{texto}" as critical'])
+    except Exception:  # noqa: BLE001 - si ni siquiera se puede avisar, queda el archivo
+        pass
+
+
+def comprobar_ventana(ventana, fichero_resultado):
+    """Prueba automática con la ventana de verdad: espera a que cargue y la cierra."""
+    import time
+
+    resultado = "FALLO: la ventana no terminó de cargar"
+    for _ in range(60):
+        try:
+            if ventana.evaluate_js("!!(document.querySelector('#zona') && window.pywebview && window.pywebview.api"
+                                   " && window.pywebview.api.guardar)"):
+                resultado = "OK"
+                break
+        except Exception as e:  # noqa: BLE001
+            resultado = f"FALLO: {e!r}"
+        time.sleep(0.5)
+    with open(fichero_resultado, "w", encoding="utf-8") as f:
+        f.write(resultado + "\n")
+    ventana.destroy()
+
+
+def abrir_ventana():
     import webview
     from werkzeug.serving import make_server
 
@@ -171,8 +225,26 @@ def main():
     )
     puente._ventana = ventana
     icono = os.path.join(servidor.CARPETA_APP, "recursos", "icono.png")
-    webview.start(private_mode=True, icon=icono if os.path.isfile(icono) else None)
+    prueba_ventana = os.environ.get("LIMPIA_PRUEBA_VENTANA")
+    webview.start(
+        comprobar_ventana if prueba_ventana else None,
+        (ventana, prueba_ventana) if prueba_ventana else None,
+        private_mode=True,
+        icon=icono if os.path.isfile(icono) else None,
+    )
     servidor_web.shutdown()
+
+
+def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "--prueba":
+        sys.exit(prueba(sys.argv[2]))
+    try:
+        abrir_ventana()
+    except Exception:  # noqa: BLE001 - cualquier fallo al arrancar se le enseña a la persona
+        import traceback
+
+        avisar_error(traceback.format_exc())
+        sys.exit(1)
 
 
 if __name__ == "__main__":

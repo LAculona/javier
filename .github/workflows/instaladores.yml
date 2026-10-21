@@ -25,7 +25,13 @@ jobs:
           python-version: "3.12"
 
       - name: Instalar dependencias
-        run: python -m pip install -r requirements-escritorio.txt
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements.txt pywebview==6.2.1
+          # El arrancador que trae PyInstaller ya hecho es el que más falsos positivos
+          # da en los antivirus; compilándolo aquí desde el código fuente se evitan.
+          $env:PYINSTALLER_COMPILE_BOOTLOADER = "1"
+          python -m pip install --no-binary pyinstaller pyinstaller==6.22.3
 
       - name: Descargar ExifTool
         shell: pwsh
@@ -61,6 +67,30 @@ jobs:
           if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DVersion=1.0.${{ github.run_number }}" instalador.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Instalar y abrir la ventana de verdad
+        shell: pwsh
+        run: |
+          $p = Start-Process salida\LimpiaMetadatos-Instalador-Windows.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/CURRENTUSER" -PassThru -Wait
+          $exe = "$env:LOCALAPPDATA\Programs\Limpia Metadatos\Limpia Metadatos.exe"
+          if (-not (Test-Path $exe)) { Write-Host "No se instaló en $exe"; Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Depth 1; exit 1 }
+          $env:LIMPIA_PRUEBA_VENTANA = "$env:RUNNER_TEMP\ventana.txt"
+          $app = Start-Process $exe -PassThru
+          if (-not $app.WaitForExit(120000)) { $app.Kill(); Write-Host "La ventana no se cerró a tiempo" }
+          if (Test-Path "$env:LOCALAPPDATA\Limpia Metadatos\error.txt") { Get-Content "$env:LOCALAPPDATA\Limpia Metadatos\error.txt" }
+          if (-not (Test-Path $env:LIMPIA_PRUEBA_VENTANA)) { Write-Host "La ventana no llegó a abrirse"; exit 1 }
+          Get-Content $env:LIMPIA_PRUEBA_VENTANA
+          if (-not (Select-String -Path $env:LIMPIA_PRUEBA_VENTANA -Pattern "^OK$" -Quiet)) { exit 1 }
+
+      - name: Analizar con Microsoft Defender
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $mp = Get-ChildItem "$env:ProgramFiles\Windows Defender\MpCmdRun.exe", "$env:ProgramData\Microsoft\Windows Defender\Platform\*\MpCmdRun.exe" -ErrorAction SilentlyContinue | Select-Object -Last 1
+          if (-not $mp) { Write-Host "Defender no está disponible en esta máquina"; exit 0 }
+          & $mp.FullName -SignatureUpdate | Out-Null
+          & $mp.FullName -Scan -ScanType 3 -File "$pwd\salida" -DisableRemediation
+          & $mp.FullName -Scan -ScanType 3 -File "$env:LOCALAPPDATA\Programs\Limpia Metadatos" -DisableRemediation
 
       - uses: actions/upload-artifact@v4
         with:
@@ -101,6 +131,17 @@ jobs:
           "dist/Limpia Metadatos.app/Contents/MacOS/Limpia Metadatos" --prueba "$RUNNER_TEMP/prueba.txt" || true
           cat "$RUNNER_TEMP/prueba.txt"
           grep -qx OK "$RUNNER_TEMP/prueba.txt"
+
+      - name: Abrir la ventana de verdad
+        run: |
+          export LIMPIA_PRUEBA_VENTANA="$RUNNER_TEMP/ventana.txt"
+          "dist/Limpia Metadatos.app/Contents/MacOS/Limpia Metadatos" &
+          pid=$!
+          for i in $(seq 120); do kill -0 $pid 2>/dev/null || break; sleep 1; done
+          kill $pid 2>/dev/null || true
+          cat ~/Library/Logs/Limpia\ Metadatos/error.txt 2>/dev/null || true
+          cat "$LIMPIA_PRUEBA_VENTANA"
+          grep -qx OK "$LIMPIA_PRUEBA_VENTANA"
 
       - name: Crear el .dmg
         run: |

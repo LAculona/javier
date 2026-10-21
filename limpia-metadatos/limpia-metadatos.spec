@@ -17,6 +17,7 @@ exe = EXE(
     name="Limpia Metadatos",
     console=False,
     icon="recursos/icono.ico" if sys.platform == "win32" else "recursos/icono.png",
+    version="version_windows.txt" if sys.platform == "win32" else None,
     upx=False,
 )
 coleccion = COLLECT(exe, a.binaries, a.datas, name="Limpia Metadatos", upx=False)
