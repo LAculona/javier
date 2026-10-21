@@ -113,6 +113,7 @@ function plural(n, uno, varios) {
 }
 
 function chipsEstado(a) {
+  if (a.bloqueado) return [crear("span", { class: "chip sensible" }, "🔒 Protegido con contraseña")];
   if (!a.compatible) return [crear("span", { class: "chip error" }, a.error || "No compatible")];
   const chips = [];
   if (a.personales === 0) {
@@ -143,7 +144,9 @@ function pintarLista() {
         crear("div", { class: "detalles" }, crear("span", {}, tamano(a.tamano)), chipsEstado(a)),
       ),
       crear("div", { class: "botones-archivo" },
-        crear("button", { class: "boton peque", disabled: !a.compatible, onclick: () => abrirEditor(a.id) }, "Ver y editar"),
+        a.bloqueado
+          ? crear("button", { class: "boton peque aviso", onclick: () => abrirEditor(a.id) }, "🔓 Desbloquear")
+          : crear("button", { class: "boton peque", disabled: !a.compatible, onclick: () => abrirEditor(a.id) }, "Ver todo"),
         crear("button", {
           class: "boton peque principal", disabled: !a.compatible || a.personales === 0,
           onclick: (e) => conBoton(e.currentTarget, () => limpiarArchivo(a.id)),
@@ -172,7 +175,10 @@ function actualizar(a) {
 async function subir(ficheros) {
   if (!ficheros.length) return;
   const datos = new FormData();
-  for (const f of ficheros) datos.append("archivos", f);
+  for (const f of ficheros) {
+    datos.append("archivos", f);
+    datos.append("modificados", String(f.lastModified || ""));
+  }
   aviso(`Analizando ${plural(ficheros.length, "archivo", "archivos")}…`);
   try {
     recibirSubidos(await api("/api/subir", { method: "POST", body: datos }));
@@ -181,7 +187,10 @@ async function subir(ficheros) {
   }
 }
 
+let ultimaRecepcion = 0;
+
 function recibirSubidos(nuevosArchivos) {
+  ultimaRecepcion = Date.now();
   nuevosArchivos.forEach(actualizar);
   const conDatos = nuevosArchivos.filter((a) => a.personales > 0).length;
   if (conDatos) aviso(`${plural(conDatos, "archivo tiene", "archivos tienen")} datos personales.`);
@@ -235,8 +244,15 @@ function nombreBonito(d) {
 function pintarEditor() {
   const a = archivoAbierto;
   $("#ed-nombre").textContent = a.nombre;
-  $("#ed-resumen").replaceChildren(crear("span", {}, `${tamano(a.tamano)} · ${a.motor}`), ...chipsEstado(a));
+  $("#ed-resumen").replaceChildren(crear("span", {}, `${tamano(a.tamano)} · ${a.motor || ""}`), ...chipsEstado(a));
   $("#ed-descargar").replaceWith(botonDescargar(a.id, "boton", "ed-descargar"));
+  $(".editor-acciones").hidden = !!a.bloqueado;
+  $(".pestanas").hidden = !!a.bloqueado;
+  if (a.bloqueado) {
+    mostrarPestana("herramientas");
+    pintarHerramientas();
+    return;
+  }
   $("#ed-limpiar").disabled = a.personales === 0;
   $("#ed-gps").hidden = !a.gps;
   $("#ed-sensibles").hidden = !a.sensibles;
@@ -395,8 +411,11 @@ async function abrirEditor(id) {
   }
   cambios = {};
   nuevos = [];
+  informeActual = null;
   $("#ed-buscar").value = "";
+  mostrarPestana("resumen");
   pintarEditor();
+  cargarInforme();
   $("#fondo").hidden = false;
   $("#editor").hidden = false;
   $("#ed-buscar").blur();
@@ -415,6 +434,7 @@ function recibir(a) {
   nuevos = [];
   actualizar(a);
   pintarEditor();
+  cargarInforme();
 }
 
 async function guardar() {
@@ -431,6 +451,263 @@ function marcarParaBorrar(condicion) {
   archivoAbierto.metadatos
     .filter((d) => d.seccion === "personal" && d.borrable && condicion(d))
     .forEach((d) => { cambios[d.clave] = null; });
+}
+
+// ------------------------------------------------------------------ resumen (informe completo)
+
+let informeActual = null;
+const ICONOS = {
+  ubicacion: "📍", dispositivo: "📱", persona: "👤", fecha: "🕒", programa: "💻", comentario: "💬",
+  documento: "📄", peligro: "⚠️", firma: "✍️", candado: "🔒", imagen: "🖼️", carpeta: "📁",
+  correo: "✉️", internet: "🌐", camara: "📷", contenido: "🎞️", archivo: "🗂️", lugar: "🗺️",
+};
+
+function mostrarPestana(nombre) {
+  document.querySelectorAll(".pestana").forEach((b) => b.classList.toggle("activa", b.dataset.panel === nombre));
+  for (const panel of ["resumen", "datos", "herramientas"]) $(`#panel-${panel}`).hidden = panel !== nombre;
+}
+
+async function cargarInforme() {
+  const a = archivoAbierto;
+  if (!a || a.bloqueado) return;
+  $("#ed-informe").replaceChildren(crear("div", { class: "cargando-informe" }, "Analizando el archivo a fondo…"));
+  try {
+    const informe = await api(`/api/archivo/${a.id}/informe`);
+    if (archivoAbierto?.id !== a.id) return;
+    informeActual = informe;
+    pintarInforme();
+    pintarHerramientas();
+  } catch (e) {
+    $("#ed-informe").replaceChildren(crear("div", { class: "vacia error" }, e.message));
+  }
+}
+
+function tarjeta(titulo, icono, ...contenido) {
+  return crear("section", { class: "tarjeta" },
+    crear("h3", {}, crear("span", { class: "icono-tarjeta" }, ICONOS[icono] || "•"), titulo), ...contenido);
+}
+
+function filas(lista) {
+  return crear("dl", { class: "filas" }, ...lista.flatMap(([k, v]) => [crear("dt", {}, k), crear("dd", {}, String(v))]));
+}
+
+function enlaceExterno(texto, url) {
+  return crear("a", { href: url, target: "_blank", rel: "noopener", class: "enlace" }, texto);
+}
+
+function pintarInforme() {
+  const inf = informeActual;
+  const cont = $("#ed-informe");
+  cont.replaceChildren();
+
+  // Lo más importante, en frases
+  cont.append(tarjeta("Qué revela este archivo", "peligro", inf.avisos.length
+    ? crear("ul", { class: "avisos-lista" }, ...inf.avisos.map((x) =>
+      crear("li", { class: `aviso-${x.tipo}` }, crear("span", { class: "icono-aviso" }, ICONOS[x.tipo] || "•"), crear("span", {}, x.texto))))
+    : crear("div", { class: "vacia" }, "✓ No hemos encontrado nada que revele datos personales.")));
+
+  if (inf.ubicacion) cont.append(tarjetaUbicacion(inf.ubicacion));
+
+  if (inf.fechas.length) {
+    cont.append(tarjeta("Fechas y horas", "fecha", crear("ol", { class: "linea-tiempo" }, ...inf.fechas.map((f) =>
+      crear("li", {}, crear("b", {}, f.valor), crear("span", {}, f.etiqueta), crear("small", {}, f.origen))))));
+  }
+
+  for (const s of inf.secciones) {
+    if (s.titulo === "Archivo") continue;
+    cont.append(tarjeta(s.titulo, s.icono, filas(s.filas)));
+  }
+
+  for (const f of inf.firmas) {
+    const lista = [["Tipo", f.tipo], ["Firmado por", f.firmante || f.nombre], ["Identificador", f.identificador],
+      ["Correo", f.correo], ["Fecha de la firma", f.fecha], ["Motivo", f.motivo], ["Lugar", f.lugar],
+      ["Certificado emitido por", f.emisor], ["Certificado válido", f.valido]].filter(([, v]) => v);
+    cont.append(tarjeta("Firma digital", "firma", filas(lista)));
+  }
+
+  if (inf.imagenes_internas.length) {
+    cont.append(tarjeta(`Imágenes dentro del documento (${inf.imagenes_internas.length})`, "imagen",
+      crear("div", { class: "imagenes" }, ...inf.imagenes_internas.map((img) => crear("div", { class: "imagen-interna" },
+        crear("b", {}, img.nombre),
+        img.camara ? crear("span", {}, `📷 ${img.camara}`) : null,
+        img.fecha ? crear("span", {}, `🕒 ${img.fecha}`) : null,
+        img.programa ? crear("span", {}, `💻 ${img.programa}`) : null,
+        img.gps
+          ? enlaceExterno(`📍 ${img.gps.lat.toFixed(5)}, ${img.gps.lon.toFixed(5)}`, `https://www.google.com/maps?q=${img.gps.lat},${img.gps.lon}`)
+          : crear("span", { class: "suave" }, "Sin ubicación"),
+      )))));
+  }
+
+  const archivo = inf.secciones.find((s) => s.titulo === "Archivo");
+  if (archivo) cont.append(tarjeta("Archivo", "archivo", filas(archivo.filas)));
+}
+
+function tarjetaUbicacion(u) {
+  const zonaMapa = crear("div", { class: "mapa" });
+  const direccion = crear("div", { class: "direccion" });
+  const datos = [["Coordenadas", u.texto], ["De dónde sale", u.fuente]];
+  if (u.alt !== undefined) datos.push(["Altitud", `${u.alt} m`]);
+  if (u.direccion !== undefined) datos.push(["Hacia dónde miraba", `${Math.round(u.direccion)}°`]);
+  if (u.precision !== undefined) datos.push(["Precisión", `± ${u.precision} m`]);
+  const boton = crear("button", {
+    class: "boton",
+    onclick: (e) => conBoton(e.currentTarget, async () => {
+      const d = 0.004;
+      zonaMapa.replaceChildren(crear("iframe", {
+        title: "Mapa", loading: "lazy",
+        src: `https://www.openstreetmap.org/export/embed.html?bbox=${u.lon - d},${u.lat - d},${u.lon + d},${u.lat + d}&layer=mapnik&marker=${u.lat},${u.lon}`,
+      }));
+      try {
+        const r = await api(`/api/lugar?lat=${u.lat}&lon=${u.lon}`);
+        direccion.replaceChildren(crear("b", {}, "Dirección aproximada: "), r.direccion || "desconocida");
+      } catch (error) {
+        direccion.replaceChildren(error.message);
+      }
+      boton.hidden = true;
+    }),
+  }, "Ver mapa y dirección");
+  return tarjeta("Ubicación", "ubicacion",
+    filas(datos),
+    crear("div", { class: "botonera" }, boton, enlaceExterno("Abrir en Google Maps", u.google), enlaceExterno("Abrir en OpenStreetMap", u.osm)),
+    crear("p", { class: "ayuda" }, "El mapa y la dirección se piden a OpenStreetMap solo si pulsas el botón (necesita internet)."),
+    direccion, zonaMapa);
+}
+
+// ------------------------------------------------------------------ herramientas
+
+async function herramienta(ruta, cuerpo) {
+  const r = await fetch(`/api/archivo/${archivoAbierto.id}/${ruta}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo || {}),
+  });
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const error = new Error(datos.error || `Error ${r.status}`);
+    error.necesitaContrasena = datos.necesita_contrasena;
+    throw error;
+  }
+  recibir(datos);
+  if (datos.mensaje) aviso(datos.mensaje, "ok");
+  return datos;
+}
+
+function campo(etiqueta, control) {
+  return crear("label", { class: "campo" }, crear("span", {}, etiqueta), control);
+}
+
+function pintarHerramientas() {
+  const cont = $("#ed-herramientas");
+  const a = archivoAbierto;
+  cont.replaceChildren();
+
+  if (a.bloqueado) {
+    cont.append(herramientaDesbloquear({ cifrado: "Necesita contraseña para abrirse" }, true));
+    return;
+  }
+  if (!informeActual) {
+    cont.append(crear("div", { class: "cargando-informe" }, "Cargando…"));
+    return;
+  }
+  const cap = informeActual.capacidades;
+  cont.append(herramientaFechas(cap));
+  if (cap.ubicacion) cont.append(herramientaUbicacion());
+  if (cap.desbloquear) cont.append(herramientaDesbloquear(informeActual.proteccion, false));
+  if (cap.firmas) cont.append(herramientaFirmas());
+}
+
+function herramientaFechas(cap) {
+  if (!cap.fechas) {
+    return tarjeta("Fechas y horas", "fecha", crear("p", { class: "ayuda" },
+      "Este archivo no tiene fechas que se puedan cambiar. Puedes añadir una en «Todos los datos» → «Añadir un dato» → «Fecha de creación»."));
+  }
+  const ahora = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const fecha = crear("input", { type: "datetime-local", value: ahora, step: 1 });
+  const signo = crear("select", {}, crear("option", { value: "+" }, "Adelantar"), crear("option", { value: "-" }, "Atrasar"));
+  const num = (ph) => crear("input", { type: "number", min: 0, step: 1, placeholder: ph, class: "corto" });
+  const anios = num("0"), dias = num("0"), horas = num("0"), minutos = num("0");
+  const tambienArchivo = crear("input", { type: "checkbox" });
+  const modoFijar = crear("input", { type: "radio", name: "modo-fechas", checked: true });
+  const modoMover = crear("input", { type: "radio", name: "modo-fechas" });
+  const listaFechas = (informeActual.fechas || []).filter((f) => f.editable);
+  return tarjeta("Fechas y horas", "fecha",
+    crear("p", { class: "ayuda" }, `Cambia de golpe las ${cap.fechas} fecha(s) guardadas dentro del archivo` +
+      (listaFechas.length ? `: ${listaFechas.map((f) => f.etiqueta.toLowerCase()).join(", ")}.` : ".") +
+      " Cada una conserva su formato y su zona horaria."),
+    crear("label", { class: "opcion" }, modoFijar, crear("span", {}, "Poner todas en esta fecha y hora:")),
+    crear("div", { class: "fila-campos" }, fecha),
+    crear("label", { class: "opcion" }, modoMover, crear("span", {}, "Adelantar o atrasar todas:")),
+    crear("div", { class: "fila-campos" }, signo, campo("años", anios), campo("días", dias), campo("horas", horas), campo("minutos", minutos)),
+    escritorio ? crear("label", { class: "opcion" }, tambienArchivo,
+      crear("span", {}, "Poner también esa fecha al archivo en tu ordenador al guardarlo")) : null,
+    crear("div", { class: "botonera" }, crear("button", {
+      class: "boton principal",
+      onclick: (e) => conBoton(e.currentTarget, () => herramienta("fechas", modoFijar.checked
+        ? { modo: "fijar", fecha: fecha.value, archivo: tambienArchivo.checked }
+        : { modo: "desplazar", signo: signo.value, anios: anios.value, dias: dias.value, horas: horas.value, minutos: minutos.value })),
+    }, "Cambiar fechas")));
+}
+
+function herramientaUbicacion() {
+  const u = informeActual.ubicacion;
+  const pegado = crear("input", { type: "text", placeholder: "Pega aquí las coordenadas, p. ej. 40.4168, -3.7038" });
+  const lat = crear("input", { type: "text", placeholder: "Latitud", value: u ? u.lat : "" });
+  const lon = crear("input", { type: "text", placeholder: "Longitud", value: u ? u.lon : "" });
+  const alt = crear("input", { type: "text", placeholder: "Altitud (m, opcional)", value: u?.alt ?? "" });
+  return tarjeta("Ubicación", "ubicacion",
+    crear("p", { class: "ayuda" }, u ? `Ahora mismo: ${u.texto}.` : "Ahora mismo no tiene ubicación."),
+    crear("p", { class: "ayuda" }, "Para sacar coordenadas en Google Maps: clic derecho sobre el sitio y pulsa en los números que aparecen arriba (se copian solos)."),
+    crear("div", { class: "fila-campos" }, pegado),
+    crear("div", { class: "fila-campos" }, lat, lon, alt),
+    crear("div", { class: "botonera" },
+      crear("button", {
+        class: "boton principal",
+        onclick: (e) => conBoton(e.currentTarget, () => herramienta("ubicacion",
+          pegado.value.trim() ? { pegado: pegado.value } : { lat: lat.value, lon: lon.value, alt: alt.value })),
+      }, u ? "Cambiar ubicación" : "Poner ubicación"),
+      u ? crear("button", { class: "boton aviso", onclick: (e) => conBoton(e.currentTarget, () => herramienta("ubicacion", { quitar: true })) }, "Quitar ubicación") : null));
+}
+
+function herramientaDesbloquear(proteccion, pideContrasena) {
+  const protegido = proteccion && (proteccion.cifrado || (proteccion.restricciones || []).length);
+  const contrasena = crear("input", { type: "password", placeholder: "Contraseña para abrirlo", autocomplete: "off" });
+  const zonaContrasena = crear("div", { class: "fila-campos", hidden: !pideContrasena }, contrasena);
+  const desbloquear = async () => {
+    try {
+      await herramienta("desbloquear", { contrasena: contrasena.value });
+    } catch (e) {
+      if (e.necesitaContrasena) {
+        zonaContrasena.hidden = false;
+        contrasena.focus();
+      }
+      throw e;
+    }
+  };
+  contrasena.addEventListener("keydown", (e) => { if (e.key === "Enter") $("#btn-desbloquear")?.click(); });
+  return tarjeta("Desbloquear", "candado",
+    crear("p", { class: "ayuda" }, protegido
+      ? "Estado: " + [proteccion.cifrado, ...(proteccion.restricciones || [])].filter(Boolean).join("; ") + "."
+      : "No tiene contraseña ni restricciones."),
+    crear("p", { class: "ayuda" }, "Quita las restricciones (no dejar imprimir, copiar, editar…) y, si sabes la contraseña para abrirlo, también la contraseña."),
+    zonaContrasena,
+    crear("div", { class: "botonera" }, crear("button", {
+      id: "btn-desbloquear", class: "boton principal", disabled: !protegido && !pideContrasena,
+      onclick: (e) => conBoton(e.currentTarget, desbloquear),
+    }, "Desbloquear")));
+}
+
+function herramientaFirmas() {
+  const firmas = informeActual.firmas;
+  return tarjeta("Firmas digitales", "firma",
+    crear("p", { class: "ayuda" }, firmas.length
+      ? `Firmado por: ${firmas.map((f) => f.firmante || f.nombre || "desconocido").join(", ")}.`
+      : "No tiene firmas digitales."),
+    firmas.length ? crear("p", { class: "ayuda" }, "Al quitar la firma, el documento deja de demostrar quién lo firmó. Úsalo solo con documentos tuyos.") : null,
+    crear("div", { class: "botonera" }, crear("button", {
+      class: "boton aviso", disabled: !firmas.length,
+      onclick: (e) => conBoton(e.currentTarget, async () => {
+        if (!confirm("¿Quitar las firmas digitales de este documento?")) return;
+        await herramienta("quitar-firmas");
+      }),
+    }, "Quitar firmas")));
 }
 
 // ------------------------------------------------------------------ eventos
@@ -455,7 +732,12 @@ function iniciar() {
     e.preventDefault();
     profundidad = 0;
     $("#soltar").hidden = true;
-    subir([...(e.dataTransfer?.files || [])]);
+    const ficheros = [...(e.dataTransfer?.files || [])];
+    if (!escritorio) { subir(ficheros); return; }
+    // En la aplicación, Python recibe los archivos con su ruta real (fechas y procedencia).
+    // Si en 2 segundos no han llegado así, se suben de la forma normal.
+    const momento = Date.now();
+    setTimeout(() => { if (ultimaRecepcion < momento) subir(ficheros); }, 2000);
   });
 
   $("#btn-limpiar-todos").addEventListener("click", (e) => conBoton(e.currentTarget, async () => {
@@ -507,9 +789,14 @@ function iniciar() {
     recibir(await limpiarArchivo(archivoAbierto.id));
   }));
   $("#ed-gps").addEventListener("click", (e) => conBoton(e.currentTarget, async () => {
+    if (archivoAbierto.motor === "ExifTool") {
+      await herramienta("ubicacion", { quitar: true });
+      return;
+    }
     marcarParaBorrar((d) => /gps|location|geotag/i.test(d.clave));
     await guardar();
   }));
+  document.querySelectorAll(".pestana").forEach((b) => b.addEventListener("click", () => mostrarPestana(b.dataset.panel)));
   $("#ed-sensibles").addEventListener("click", (e) => conBoton(e.currentTarget, async () => {
     marcarParaBorrar((d) => d.sensible);
     await guardar();

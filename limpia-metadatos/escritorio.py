@@ -4,6 +4,7 @@ La interfaz es la misma; el servidor interno solo escucha en este equipo y se
 cierra junto con la ventana.
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -31,11 +32,7 @@ class Puente:
         import webview
 
         rutas = self._dialogo(webview.FileDialog.OPEN, allow_multiple=True)
-        return [
-            servidor.registrar(os.path.basename(r), lambda destino, r=r: shutil.copyfile(r, destino),
-                               carpeta_origen=os.path.dirname(r))
-            for r in rutas
-        ]
+        return [servidor.registrar_ruta(r) for r in rutas]
 
     def guardar(self, id_archivo):
         import webview
@@ -54,6 +51,7 @@ class Puente:
         destino = destino[0]
         with servidor.cerrojo:
             shutil.copyfile(registro["ruta"], destino)
+            poner_fecha_archivo(registro, destino)
         return {"ok": True, "ruta": destino}
 
     def guardar_todos(self):
@@ -66,7 +64,9 @@ class Puente:
         total = 0
         with servidor.cerrojo:
             for registro in servidor.archivos.values():
-                shutil.copyfile(registro["ruta"], nombre_libre(carpeta, registro["nombre"]))
+                destino = nombre_libre(carpeta, registro["nombre"])
+                shutil.copyfile(registro["ruta"], destino)
+                poner_fecha_archivo(registro, destino)
                 total += 1
         return {"ok": True, "ruta": carpeta, "total": total}
 
@@ -82,6 +82,12 @@ class Puente:
                 subprocess.Popen(["xdg-open", carpeta])
         except OSError:
             pass
+
+
+def poner_fecha_archivo(registro, destino):
+    """Si se eligió una fecha para el archivo, se le pone al guardarlo."""
+    if registro.get("fecha_archivo"):
+        os.utime(destino, (registro["fecha_archivo"], registro["fecha_archivo"]))
 
 
 def carpeta_inicial():
@@ -136,7 +142,37 @@ def prueba(fichero_resultado):
             editado = cliente.post(f"/api/archivo/{datos['id']}/editar",
                                    json={"cambios": {}, "nuevos": [{"campo": "autor", "valor": "Prueba ñ"}]}).get_json()
             assert any("Prueba ñ" in m["valor"] for m in editado["metadatos"]), f"{ruta}: no se editó"
+            informe = cliente.get(f"/api/archivo/{datos['id']}/informe").get_json()
+            assert "avisos" in informe and informe["secciones"], f"{ruta}: el informe no funciona"
+            cambio = cliente.post(f"/api/archivo/{datos['id']}/fechas", json={"modo": "fijar", "fecha": "2020-01-02T03:04"})
+            assert cambio.status_code == 200, f"{ruta}: no se cambiaron las fechas"
             lineas.append(f"{os.path.basename(ruta)}: {datos['motor']} OK")
+        # Un Word con contraseña: se tiene que poder desbloquear.
+        import io
+        import zipfile
+
+        from msoffcrypto.format.ooxml import OOXMLFile
+
+        paquete = io.BytesIO()
+        with zipfile.ZipFile(paquete, "w") as z:
+            z.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>')
+            z.writestr("docProps/core.xml", '<?xml version="1.0"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/'
+                       'package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:creator>Javier'
+                       '</dc:creator></cp:coreProperties>')
+            # Relleno: los documentos de verdad ocupan más de 4 KB (msoffcrypto no cifra bien los diminutos).
+            z.writestr("word/media/relleno.bin", os.urandom(8192))
+        paquete.seek(0)
+        cifrado = os.path.join(carpeta, "cifrado.docx")
+        with open(cifrado, "wb") as f:
+            OOXMLFile(paquete).encrypt("1234", f)
+        datos = servidor.registrar("cifrado.docx", lambda d: shutil.copyfile(cifrado, d))
+        assert datos.get("bloqueado"), "no detecta el Word con contraseña"
+        abierto = cliente.post(f"/api/archivo/{datos['id']}/desbloquear", json={"contrasena": "1234"}).get_json()
+        assert abierto.get("compatible") and abierto.get("personales"), f"no se desbloquea el Word: {abierto}"
+        lineas.append("Word con contraseña: OK")
+        # La dirección se consulta en internet: si falla aquí no es grave, solo se anota.
+        lugar = cliente.get("/api/lugar?lat=40.4168&lon=-3.7038").get_json()
+        lineas.append(f"dirección de prueba: {lugar.get('direccion') or lugar.get('error')}")
         assert cliente.get("/").status_code == 200, "no se encuentra la interfaz"
         lineas.append("OK")
         return 0
@@ -187,6 +223,38 @@ def avisar_error(detalle):
         pass
 
 
+def al_arrancar(ventana, fichero_prueba=None):
+    """Se ejecuta cuando la ventana ya existe."""
+    vigilar_arrastre(ventana)
+    if fichero_prueba:
+        comprobar_ventana(ventana, fichero_prueba)
+
+
+def vigilar_arrastre(ventana):
+    """Al arrastrar archivos a la ventana se usa su ruta real (así se conocen sus fechas y su origen)."""
+    import logging
+
+    from webview.dom import DOMEventHandler
+
+    def al_soltar(evento):
+        archivos = (evento.get("dataTransfer") or {}).get("files") or []
+        rutas = [f.get("pywebviewFullPath") for f in archivos]
+        rutas = [r for r in rutas if r and os.path.isfile(r)]
+        if not rutas:
+            return
+        try:
+            nuevos = [servidor.registrar_ruta(r) for r in rutas]
+            ventana.evaluate_js(f"recibirSubidos({json.dumps(nuevos)})")
+        except Exception:  # noqa: BLE001
+            logging.exception("No se pudieron añadir los archivos arrastrados")
+            ventana.evaluate_js("aviso('No se pudieron añadir los archivos arrastrados.', 'error')")
+
+    try:
+        ventana.dom.document.events.drop += DOMEventHandler(al_soltar, True, False)
+    except Exception:  # noqa: BLE001 - si falla, se sigue pudiendo usar «elegir archivos»
+        logging.exception("No se pudo activar arrastrar y soltar")
+
+
 def comprobar_ventana(ventana, fichero_resultado):
     """Prueba automática con la ventana de verdad: espera a que cargue y la cierra."""
     import time
@@ -231,8 +299,8 @@ def abrir_ventana():
     prueba_ventana = os.environ.get("LIMPIA_PRUEBA_VENTANA")
     logging.info("Abriendo la ventana (servidor en el puerto %s)", servidor_web.server_port)
     webview.start(
-        comprobar_ventana if prueba_ventana else None,
-        (ventana, prueba_ventana) if prueba_ventana else None,
+        al_arrancar,
+        (ventana, prueba_ventana),
         private_mode=True,
         icon=icono if os.path.isfile(icono) else None,
     )

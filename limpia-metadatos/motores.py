@@ -365,10 +365,11 @@ class MotorPDF(Motor):
                 try:
                     with pdf.open_metadata() as xmp:
                         for clave, valor in xmp.items():
-                            if isinstance(valor, (list, set, tuple)):
+                            es_lista = isinstance(valor, (list, set, tuple))
+                            if es_lista:
                                 valor = ", ".join(str(v) for v in valor)
                             resultado.append(dato(f"XMP:{clave}", str(valor), "XMP",
-                                                  _nombre_xmp(clave), editable=False))
+                                                  _nombre_xmp(clave), editable=not es_lista))
                 except Exception:
                     resultado.append(dato("XMP:Metadata", "(bloque XMP)", "XMP", "Metadata", editable=False))
             paginas = sum(1 for p in pdf.pages if "/Metadata" in p.obj or "/PieceInfo" in p.obj)
@@ -401,6 +402,11 @@ class MotorPDF(Motor):
             for clave in ("/Metadata", "/PieceInfo"):
                 if clave in pagina.obj:
                     del pagina.obj[clave]
+        # Las fotos metidas en el PDF pueden llevar su propio GPS y cámara.
+        from herramientas import anonimizar_pdf, limpiar_imagenes_pdf
+
+        limpiar_imagenes_pdf(pdf)
+        anonimizar_pdf(pdf)
         self._guardar(pdf, ruta)
 
     def editar(self, ruta, cambios, nuevos):
@@ -412,11 +418,14 @@ class MotorPDF(Motor):
         borrados = []
         for clave, valor in cambios.items():
             grupo, _, nombre = clave.partition(":")
-            if grupo == "XMP" and valor is None:
+            if grupo == "XMP":
                 if "/Metadata" in pdf.Root:
                     with pdf.open_metadata(set_pikepdf_as_editor=False, update_docinfo=False) as xmp:
-                        if nombre in xmp:
-                            del xmp[nombre]
+                        if valor is None:
+                            if nombre in xmp:
+                                del xmp[nombre]
+                        else:
+                            xmp[nombre] = _limpiar_valor(valor)
             elif grupo == "Páginas" and valor is None:
                 for pagina in pdf.pages:
                     for c in ("/Metadata", "/PieceInfo"):
@@ -570,6 +579,12 @@ class MotorOffice(Motor):
             reemplazos["docProps/custom.xml"] = _xml_bytes(custom)
         if reemplazos:
             _reescribir_zip(ruta, reemplazos)
+        # Las fotos pegadas en el documento pueden llevar su propio GPS y cámara.
+        # …y los comentarios y cambios guardan el nombre de quien los hizo.
+        from herramientas import anonimizar_ooxml, limpiar_imagenes_zip
+
+        limpiar_imagenes_zip(ruta, ("word/media/", "xl/media/", "ppt/media/"))
+        anonimizar_ooxml(ruta)
 
     def editar(self, ruta, cambios, nuevos):
         core, app, custom = self._leer_partes(ruta)
@@ -670,6 +685,10 @@ class MotorOpenDocument(Motor):
             if _nombre_corto(el.tag) != "meta:document-statistic":
                 meta.remove(el)
         self._guardar(ruta, raiz)
+        from herramientas import anonimizar_odf, limpiar_imagenes_zip
+
+        limpiar_imagenes_zip(ruta, ("Pictures/",))
+        anonimizar_odf(ruta)
 
     def editar(self, ruta, cambios, nuevos):
         raiz, meta = self._meta(ruta)

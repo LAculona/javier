@@ -246,7 +246,7 @@ main { max-width: 980px; margin: 0 auto; padding: 16px 20px 80px; }
   z-index: 30;
   display: flex;
   flex-direction: column;
-  width: min(760px, 100%);
+  width: min(880px, 100%);
   background: var(--fondo);
   box-shadow: -8px 0 30px rgba(0, 0, 0, .2);
   animation: entrar .18s ease-out;
@@ -360,6 +360,108 @@ main { max-width: 980px; margin: 0 auto; padding: 16px 20px 80px; }
 .aviso-flotante.ok { background: #166534; }
 .aviso-flotante.error { background: #b91c1c; }
 @keyframes subir { from { transform: translateY(10px); opacity: 0; } }
+
+/* ---------- Pestañas del editor ---------- */
+.pestanas {
+  display: flex;
+  gap: 4px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--borde);
+  background: var(--fondo);
+}
+.pestana {
+  padding: 11px 16px 10px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--suave);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pestana:hover { color: var(--texto); }
+.pestana.activa { color: var(--azul); border-bottom-color: var(--azul); }
+
+/* ---------- Tarjetas del resumen ---------- */
+.tarjeta {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  background: var(--superficie);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.tarjeta h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 15px; }
+.icono-tarjeta { font-size: 18px; }
+.cargando-informe { padding: 30px; text-align: center; color: var(--suave); }
+.suave { color: var(--suave); }
+
+.filas {
+  display: grid;
+  grid-template-columns: minmax(140px, 32%) 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 14px;
+}
+.filas dt { color: var(--suave); }
+.filas dd { margin: 0; overflow-wrap: anywhere; user-select: text; }
+
+.avisos-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.avisos-lista li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--superficie-2);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.avisos-lista .aviso-ubicacion, .avisos-lista .aviso-peligro { background: var(--rojo-suave); }
+.avisos-lista .aviso-dispositivo, .avisos-lista .aviso-persona, .avisos-lista .aviso-carpeta,
+.avisos-lista .aviso-correo, .avisos-lista .aviso-internet { background: var(--naranja-suave); }
+.icono-aviso { flex: none; }
+
+.linea-tiempo { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--borde); display: grid; gap: 10px; }
+.linea-tiempo li { position: relative; display: grid; gap: 1px; font-size: 14px; }
+.linea-tiempo li::before {
+  content: "";
+  position: absolute;
+  left: -20px; top: 5px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--azul);
+}
+.linea-tiempo small { color: var(--suave); font-size: 12px; }
+
+.imagenes { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.imagen-interna { display: grid; gap: 3px; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); font-size: 13px; overflow-wrap: anywhere; }
+
+.botonera { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.enlace { color: var(--azul); font-weight: 500; text-decoration: none; }
+.enlace:hover { text-decoration: underline; }
+.direccion { margin-top: 10px; font-size: 14px; }
+.mapa iframe { width: 100%; height: 300px; margin-top: 10px; border: 0; border-radius: 10px; }
+
+/* ---------- Formularios de herramientas ---------- */
+.opcion { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; font-size: 14px; cursor: pointer; }
+.fila-campos { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.fila-campos input, .fila-campos select {
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--superficie);
+}
+.fila-campos select { flex: 0 1 150px; }
+.campo { display: grid; gap: 2px; font-size: 12px; color: var(--suave); flex: 0 1 90px; }
+.campo input { width: 100%; }
+.fila-campos input.corto { flex: 0 1 90px; }
+
+@media (max-width: 680px) {
+  .filas { grid-template-columns: 1fr; gap: 0 0; }
+  .filas dd { margin-bottom: 8px; }
+  .pestanas { padding: 0 8px; overflow-x: auto; }
+}
 
 .cargando { cursor: progress; }
 [hidden] { display: none !important; }

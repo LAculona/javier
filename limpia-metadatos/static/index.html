@@ -31,7 +31,7 @@
       <h2>¿Cómo funciona?</h2>
       <ol class="pasos">
         <li><b>1</b><span>Añade uno o varios archivos.</span></li>
-        <li><b>2</b><span>Pulsa <em>Limpiar</em> para borrar todos sus metadatos, o <em>Ver y editar</em> para cambiar los que quieras.</span></li>
+        <li><b>2</b><span>Pulsa <em>Ver todo</em> para descubrir todo lo que revela (ubicación, fechas, personas, dispositivo…) y cambiarlo, o <em>Limpiar</em> para borrarlo de golpe.</span></li>
         <li><b>3</b><span id="paso-3">Descarga el archivo ya limpio. El original nunca se modifica.</span></li>
       </ol>
     </section>
@@ -68,7 +68,21 @@
       <a id="ed-descargar" class="boton" href="#">Descargar</a>
     </div>
 
-    <div class="editor-cuerpo">
+    <nav class="pestanas" role="tablist">
+      <button class="pestana activa" data-panel="resumen" role="tab">Resumen</button>
+      <button class="pestana" data-panel="datos" role="tab">Todos los datos</button>
+      <button class="pestana" data-panel="herramientas" role="tab">Herramientas</button>
+    </nav>
+
+    <div id="panel-resumen" class="editor-cuerpo panel">
+      <div id="ed-informe"></div>
+    </div>
+
+    <div id="panel-herramientas" class="editor-cuerpo panel" hidden>
+      <div id="ed-herramientas"></div>
+    </div>
+
+    <div id="panel-datos" class="editor-cuerpo panel" hidden>
       <input id="ed-buscar" class="buscar" type="search" placeholder="Buscar un dato…">
 
       <section>

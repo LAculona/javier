@@ -41,12 +41,33 @@ muchos más formatos (Windows: `winget install OliverBetz.ExifTool`, Mac:
 1. **Arrastra** tus archivos a la ventana (o haz clic para elegirlos).
 2. Cada archivo te dice cuántos datos personales tiene, cuántos son **sensibles**
    y si **revela la ubicación** (GPS).
-3. Elige:
-   - **Limpiar**: borra todos los metadatos de golpe.
-   - **Ver y editar**: cambia el texto de cualquier dato, quítalo con la papelera
-     o **añade** uno nuevo (título, autor, copyright, fecha…). Pulsa *Guardar cambios*.
-   - Atajos dentro del editor: **Quitar solo la ubicación** y **Quitar los datos sensibles**.
-4. **Guarda** el archivo limpio donde quieras (o todos juntos en una carpeta).
+3. Pulsa **Ver todo**. Tiene tres pestañas:
+   - **Resumen**: todo lo que revela el archivo, explicado:
+     - **Ubicación** exacta (también la de las fotos que hay *dentro* de un Word o un PDF),
+       con enlaces a Google Maps / OpenStreetMap y, si lo pides, el mapa y la dirección.
+     - **Fechas y horas** ordenadas (cuándo se hizo, se modificó, se imprimió…).
+     - **Personas**: autor, quién lo modificó, quién escribió comentarios o hizo cambios
+       con control de cambios, quién lo firmó.
+     - **Dispositivo y programas**: marca, modelo, número de serie, objetivo, programas.
+     - **Documento por dentro**: comentarios, cambios, plantilla (con la ruta de tu
+       ordenador), hojas ocultas, enlaces, adjuntos, macros, JavaScript, fuentes…
+     - **Firmas digitales** (quién firmó, cuándo, con qué certificado) y **protecciones**.
+     - **Archivo**: tipo real (avisa si la extensión engaña), huellas MD5/SHA, de qué web
+       se descargó y sus fechas en tu ordenador.
+   - **Todos los datos**: cambia el texto de cualquier dato, quítalo con la papelera o
+     **añade** uno nuevo (título, autor, copyright, fecha…). Pulsa *Guardar cambios*.
+   - **Herramientas**:
+     - **Fechas y horas**: pon todas las fechas en el día y la hora que quieras, o
+       adelántalas/atrásalas (años, días, horas, minutos).
+     - **Ubicación**: pon una ubicación nueva (pegando las coordenadas de Google Maps),
+       cámbiala o quítala.
+     - **Desbloquear**: quita las restricciones de PDF, Word, Excel, PowerPoint y
+       LibreOffice (no dejar imprimir, copiar o editar) y, si sabes la contraseña para
+       abrirlo, también la contraseña.
+     - **Quitar firmas** digitales de PDF, Office y LibreOffice.
+4. **Limpiar** borra todo de golpe: metadatos, GPS de las fotos que hay dentro de los
+   documentos, nombres de quien comentó o hizo cambios, ruta de la plantilla e impresora.
+5. **Guarda** el archivo donde quieras (o todos juntos en una carpeta).
 
 Tu archivo original no se toca nunca, y siempre puedes pulsar **Volver al original**.
 

@@ -2,3 +2,5 @@ flask>=3.0
 pikepdf>=8.0
 mutagen>=1.47
 pillow>=10.0
+cryptography>=42.0
+msoffcrypto-tool>=5.4

@@ -6,19 +6,26 @@ Los archivos se guardan en una carpeta temporal que se borra al cerrar.
 
 import atexit
 import io
+import json
 import os
+import re
 import shutil
 import socket
 import subprocess
 import tempfile
 import threading
 import sys
+import urllib.parse
+import urllib.request
 import uuid
 import webbrowser
 import zipfile
+from datetime import datetime, timedelta
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
+import herramientas
+import informe as informes
 import motores
 
 CARPETA_TRABAJO = tempfile.mkdtemp(prefix="limpia-metadatos-")
@@ -84,8 +91,12 @@ def resumen(registro, con_metadatos=False):
     try:
         datos = motor.leer(registro["ruta"])
     except Exception as e:
-        resultado.update(compatible=False, personales=0, sensibles=0,
-                         error=f"No se pudieron leer los metadatos: {e}")
+        if protegido_con_contrasena(registro):
+            resultado.update(compatible=False, bloqueado=True, personales=0, sensibles=0,
+                             error="Protegido con contraseña")
+        else:
+            resultado.update(compatible=False, personales=0, sensibles=0,
+                             error=f"No se pudieron leer los metadatos: {e}")
         return resultado
     referencia = referencia_limpia(registro)
     for d in datos:
@@ -131,7 +142,76 @@ def listar():
         return jsonify([resumen(r) for r in archivos.values()])
 
 
-def registrar(nombre, guardar, carpeta_origen=None):
+def protegido_con_contrasena(registro):
+    if registro["ext"] == ".pdf":
+        import pikepdf
+
+        try:
+            pikepdf.open(registro["ruta"]).close()
+        except pikepdf.PasswordError:
+            return True
+        except Exception:  # noqa: BLE001 - PDF dañado: no es un tema de contraseña
+            return False
+        return False
+    return registro["motor"] is not None and registro["motor"].nombre == "Office" and herramientas.es_ole(registro["ruta"])
+
+
+def fecha_legible(marca):
+    momento = datetime.fromtimestamp(marca)
+    return {"legible": f"{momento:%d/%m/%Y %H:%M:%S}", "orden": momento.isoformat()}
+
+
+def fechas_de_ruta(ruta):
+    """Fechas que tu ordenador guarda del archivo (no están dentro del archivo)."""
+    datos = os.stat(ruta)
+    fechas_sistema = {"Modificado en tu ordenador": fecha_legible(datos.st_mtime)}
+    creado = getattr(datos, "st_birthtime", None) or (datos.st_ctime if sys.platform == "win32" else None)
+    if creado:
+        fechas_sistema["Creado en tu ordenador"] = fecha_legible(creado)
+    return fechas_sistema
+
+
+def procedencia_de_ruta(ruta):
+    """De dónde salió el archivo, según lo que apunta el sistema al descargarlo."""
+    resultado = [["Carpeta de origen", os.path.dirname(ruta)]]
+    if sys.platform == "win32":
+        try:
+            with open(ruta + ":Zone.Identifier", encoding="utf-8", errors="replace") as f:
+                texto = f.read()
+            zonas = {"0": "Este equipo", "1": "Red local", "2": "Sitios de confianza", "3": "Internet", "4": "Sitios restringidos"}
+            for linea in texto.splitlines():
+                clave, _, valor = linea.partition("=")
+                if clave == "ZoneId":
+                    resultado.append(["Origen según Windows", zonas.get(valor.strip(), valor)])
+                elif clave == "HostUrl" and valor.strip() not in ("", "about:internet"):
+                    resultado.append(["Descargado de", valor.strip()])
+                elif clave == "ReferrerUrl" and valor.strip():
+                    resultado.append(["Página desde la que se descargó", valor.strip()])
+        except OSError:
+            pass
+    elif sys.platform == "darwin":
+        try:
+            salida = subprocess.run(["mdls", "-raw", "-name", "kMDItemWhereFroms", ruta],
+                                    capture_output=True, text=True, timeout=5).stdout
+            for i, url in enumerate(re.findall(r'"([^"]+)"', salida)):
+                resultado.append(["Descargado de" if i == 0 else "Página desde la que se descargó", url])
+            cuarentena = subprocess.run(["xattr", "-p", "com.apple.quarantine", ruta],
+                                        capture_output=True, text=True, timeout=5).stdout.strip()
+            if cuarentena.count(";") >= 2:
+                resultado.append(["Descargado con", cuarentena.split(";")[2]])
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return resultado
+
+
+def registrar_ruta(ruta):
+    """Da de alta un archivo del disco (aplicación de escritorio), con sus fechas y procedencia."""
+    return registrar(os.path.basename(ruta), lambda destino: shutil.copyfile(ruta, destino),
+                     carpeta_origen=os.path.dirname(ruta), fechas_sistema=fechas_de_ruta(ruta),
+                     procedencia=procedencia_de_ruta(ruta))
+
+
+def registrar(nombre, guardar, carpeta_origen=None, fechas_sistema=None, procedencia=None):
     """Da de alta un archivo. `guardar(ruta)` escribe su contenido en esa ruta."""
     nombre = os.path.basename(nombre or "archivo").strip() or "archivo"
     id_archivo = uuid.uuid4().hex
@@ -147,6 +227,7 @@ def registrar(nombre, guardar, carpeta_origen=None):
         "id": id_archivo, "nombre": nombre, "carpeta": carpeta, "ext": ext,
         "original": original, "ruta": ruta, "motor": motores.elegir_motor(nombre),
         "modificado": False, "referencia": None, "carpeta_origen": carpeta_origen,
+        "fechas_sistema": fechas_sistema or {}, "procedencia": procedencia or [], "fecha_archivo": None,
     }
     with cerrojo:
         archivos[id_archivo] = registro
@@ -155,7 +236,17 @@ def registrar(nombre, guardar, carpeta_origen=None):
 
 @app.post("/api/subir")
 def subir():
-    return jsonify([registrar(f.filename, f.save) for f in request.files.getlist("archivos")])
+    ficheros = request.files.getlist("archivos")
+    modificados = request.form.getlist("modificados")
+    nuevos = []
+    for i, fichero in enumerate(ficheros):
+        fechas_sistema = {}
+        try:
+            fechas_sistema["Modificado en tu ordenador"] = fecha_legible(int(modificados[i]) / 1000)
+        except (IndexError, ValueError, OSError):
+            pass
+        nuevos.append(registrar(fichero.filename, fichero.save, fechas_sistema=fechas_sistema))
+    return jsonify(nuevos)
 
 
 @app.get("/api/archivo/<id_archivo>")
@@ -189,16 +280,133 @@ def editar(id_archivo):
         registro = obtener(id_archivo)
         motor = _exigir_motor(registro)
         # Se trabaja sobre una copia: si algo falla, el archivo queda como estaba.
-        copia = registro["ruta"] + ".editando" + registro["ext"]
-        shutil.copyfile(registro["ruta"], copia)
-        try:
-            motor.editar(copia, cambios, nuevos)
-            os.replace(copia, registro["ruta"])
-        finally:
-            if os.path.exists(copia):
-                os.remove(copia)
-        registro["modificado"] = True
+        aplicar(registro, lambda copia: motor.editar(copia, cambios, nuevos))
         return jsonify(resumen(registro, con_metadatos=True))
+
+
+def aplicar(registro, funcion):
+    """Ejecuta `funcion(copia)` sobre una copia y, si sale bien, la deja como archivo actual."""
+    copia = registro["ruta"] + ".editando" + registro["ext"]
+    shutil.copyfile(registro["ruta"], copia)
+    try:
+        resultado = funcion(copia)
+        os.replace(copia, registro["ruta"])
+    finally:
+        if os.path.exists(copia):
+            os.remove(copia)
+    registro["modificado"] = True
+    return resultado
+
+
+@app.get("/api/archivo/<id_archivo>/informe")
+def ver_informe(id_archivo):
+    with cerrojo:
+        registro = obtener(id_archivo)
+        datos = resumen(registro, con_metadatos=True)
+        resultado = informes.generar(registro, datos.get("metadatos", []))
+        motor = registro["motor"]
+        nombre_motor = motor.nombre if motor else ""
+        resultado["capacidades"] = {
+            "fechas": len(herramientas.cambios_de_fechas(datos.get("metadatos", []), "desplazar",
+                                                         desplazamiento=timedelta(seconds=1))),
+            "ubicacion": nombre_motor == "ExifTool",
+            "desbloquear": nombre_motor in ("PDF", "Office", "OpenDocument"),
+            "firmas": nombre_motor in ("PDF", "Office", "OpenDocument"),
+            "fecha_archivo": registro.get("fecha_archivo"),
+        }
+        return jsonify(resultado)
+
+
+@app.post("/api/archivo/<id_archivo>/fechas")
+def cambiar_fechas(id_archivo):
+    cuerpo = request.get_json(force=True) or {}
+    modo = cuerpo.get("modo")
+    with cerrojo:
+        registro = obtener(id_archivo)
+        motor = _exigir_motor(registro)
+        metadatos = resumen(registro, con_metadatos=True).get("metadatos", [])
+        if modo == "fijar":
+            nueva = herramientas.leer_fecha_usuario(cuerpo.get("fecha"))
+            cambios = herramientas.cambios_de_fechas(metadatos, "fijar", nueva=nueva)
+        else:
+            desplazamiento = herramientas.leer_desplazamiento(cuerpo)
+            cambios = herramientas.cambios_de_fechas(metadatos, "desplazar", desplazamiento=desplazamiento)
+        if cambios:
+            aplicar(registro, lambda copia: motor.editar(copia, cambios, []))
+        if cuerpo.get("archivo") and modo == "fijar":
+            # Fecha que tendrá el archivo en tu ordenador al guardarlo (solo en la aplicación).
+            registro["fecha_archivo"] = nueva.timestamp()
+        datos = resumen(registro, con_metadatos=True)
+        datos["mensaje"] = f"Se cambiaron {len(cambios)} fecha(s)." if cambios else "No había fechas que cambiar."
+        return jsonify(datos)
+
+
+@app.post("/api/archivo/<id_archivo>/ubicacion")
+def cambiar_ubicacion(id_archivo):
+    cuerpo = request.get_json(force=True) or {}
+    with cerrojo:
+        registro = obtener(id_archivo)
+        if registro["motor"] is None or registro["motor"].nombre != "ExifTool":
+            raise ErrorUsuario("La ubicación solo se puede cambiar en fotos y vídeos.")
+        if cuerpo.get("quitar"):
+            aplicar(registro, herramientas.quitar_ubicacion)
+            mensaje = "Ubicación quitada."
+        else:
+            lat, lon, alt = herramientas.leer_coordenadas(cuerpo)
+            aplicar(registro, lambda copia: herramientas.poner_ubicacion(copia, lat, lon, alt))
+            mensaje = f"Ubicación cambiada a {lat:.6f}, {lon:.6f}."
+        datos = resumen(registro, con_metadatos=True)
+        datos["mensaje"] = mensaje
+        return jsonify(datos)
+
+
+@app.post("/api/archivo/<id_archivo>/desbloquear")
+def desbloquear(id_archivo):
+    cuerpo = request.get_json(force=True) or {}
+    with cerrojo:
+        registro = obtener(id_archivo)
+        motor = _exigir_motor(registro)
+        try:
+            mensaje = aplicar(registro, lambda copia: herramientas.desbloquear(copia, motor.nombre, cuerpo.get("contrasena", "")))
+        except motores.ErrorMetadatos as e:
+            texto = str(e)
+            if texto.startswith("CONTRASEÑA: "):
+                return jsonify(error=texto[len("CONTRASEÑA: "):], necesita_contrasena=True), 400
+            raise
+        registro["referencia"] = None  # el archivo ahora se puede leer por dentro
+        datos = resumen(registro, con_metadatos=True)
+        datos["mensaje"] = mensaje
+        return jsonify(datos)
+
+
+@app.post("/api/archivo/<id_archivo>/quitar-firmas")
+def quitar_firmas(id_archivo):
+    with cerrojo:
+        registro = obtener(id_archivo)
+        motor = _exigir_motor(registro)
+        cuantas = aplicar(registro, lambda copia: herramientas.quitar_firmas(copia, motor.nombre))
+        datos = resumen(registro, con_metadatos=True)
+        datos["mensaje"] = f"Se quitaron {cuantas} firma(s) digital(es)." if cuantas else "No tenía firmas digitales."
+        return jsonify(datos)
+
+
+@app.get("/api/lugar")
+def lugar():
+    """Dirección aproximada de unas coordenadas. Solo se consulta si lo pides (usa OpenStreetMap)."""
+    try:
+        lat, lon = float(request.args["lat"]), float(request.args["lon"])
+    except (KeyError, ValueError):
+        raise ErrorUsuario("Coordenadas no válidas.")
+    consulta = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18,
+                                       "accept-language": "es", "addressdetails": 1})
+    peticion = urllib.request.Request(f"https://nominatim.openstreetmap.org/reverse?{consulta}",
+                                      headers={"User-Agent": "LimpiaMetadatos/1.0 (aplicacion personal)"})
+    try:
+        with urllib.request.urlopen(peticion, timeout=10) as respuesta:
+            datos = json.loads(respuesta.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 - sin internet, bloqueado, etc.
+        raise ErrorUsuario("No se pudo consultar la dirección (¿hay conexión a internet?).")
+    return jsonify(direccion=datos.get("display_name"), detalles=datos.get("address", {}))
 
 
 @app.post("/api/archivo/<id_archivo>/restaurar")
@@ -207,6 +415,7 @@ def restaurar(id_archivo):
         registro = obtener(id_archivo)
         shutil.copyfile(registro["original"], registro["ruta"])
         registro["modificado"] = False
+        registro["fecha_archivo"] = None
         return jsonify(resumen(registro, con_metadatos=True))
 
 
